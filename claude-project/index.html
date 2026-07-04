@@ -1,0 +1,673 @@
+<!DOCTYPE html>
+<html lang="no">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
+  <title>Vikingferd — Team Norway Rowing</title>
+  <link rel="icon" href="/norge-skjold.png">
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    html, body { width: 100%; height: 100%; overflow: hidden; background: #0a1428; }
+    #app { position: fixed; inset: 0; }
+    canvas { display: block; }
+
+    :root {
+      --no-red: #ba0c2f;
+      --no-blue: #00205b;
+      --no-white: #ffffff;
+    }
+
+    #hud {
+      position: fixed; inset: 0; pointer-events: none;
+      font-family: "Avenir Next", "Segoe UI", system-ui, sans-serif;
+      color: #fff; user-select: none;
+    }
+
+    /* ---- Top bar ---- */
+    .topbar {
+      position: absolute; top: 14px; left: 0; right: 0;
+      display: flex; justify-content: center; gap: 14px; align-items: stretch;
+    }
+    .pill {
+      background: linear-gradient(180deg, rgba(0,32,91,.85), rgba(0,20,60,.85));
+      border: 1px solid rgba(255,255,255,.25);
+      border-radius: 12px; padding: 8px 18px; text-align: center;
+      min-width: 110px;
+      box-shadow: 0 4px 16px rgba(0,0,0,.35);
+      backdrop-filter: blur(4px);
+    }
+    .pill .label { font-size: 10px; letter-spacing: 2px; opacity: .7; text-transform: uppercase; }
+    .pill .value { font-size: 24px; font-weight: 800; font-variant-numeric: tabular-nums; line-height: 1.15; }
+    .pill .value small { font-size: 12px; font-weight: 600; opacity: .7; }
+
+    /* ---- Stroke meter ---- */
+    #strokeMeterWrap {
+      position: absolute; bottom: 34px; left: 50%; transform: translateX(-50%);
+      width: min(420px, 70vw); text-align: center;
+    }
+    #strokeHint { font-size: 12px; letter-spacing: 2px; opacity: .85; margin-bottom: 24px; text-transform: uppercase; text-shadow: 0 1px 4px rgba(0,0,0,.6); }
+    #strokeMeter {
+      position: relative; height: 26px; border-radius: 13px;
+      background: rgba(0, 20, 60, .75);
+      border: 1px solid rgba(255,255,255,.3);
+      box-shadow: 0 4px 16px rgba(0,0,0,.4);
+    }
+    #strokeMeter.perfectFlash { animation: meterFlash .45s ease-out; }
+    @keyframes meterFlash {
+      0% { box-shadow: 0 0 0 4px rgba(255,210,94,.95), 0 0 34px rgba(255,210,94,.9); }
+      100% { box-shadow: 0 4px 16px rgba(0,0,0,.4); }
+    }
+    #strokeZoneGood {
+      position: absolute; top: 0; bottom: 0;
+      background: rgba(255,255,255,.16);
+      border-radius: 13px;
+    }
+    #strokeZone {
+      position: absolute; top: -2px; bottom: -2px;
+      border-radius: 8px;
+      background: linear-gradient(180deg, #ffe9a3, #ffc93c 55%, #e6a817);
+      box-shadow: 0 0 16px rgba(255,210,94,.85), inset 0 1px 3px rgba(255,255,255,.7);
+      animation: zonePulse 1.35s ease-in-out infinite;
+    }
+    @keyframes zonePulse {
+      0%, 100% { box-shadow: 0 0 10px rgba(255,210,94,.55), inset 0 1px 3px rgba(255,255,255,.7); }
+      50% { box-shadow: 0 0 22px rgba(255,210,94,1), inset 0 1px 3px rgba(255,255,255,.7); }
+    }
+    #strokeZone::before {
+      content: '▼'; position: absolute; top: -19px; left: 50%; transform: translateX(-50%);
+      font-size: 13px; color: #ffd25e; text-shadow: 0 0 8px rgba(255,210,94,.9);
+    }
+    #strokeZone::after {
+      content: 'PERFEKT'; position: absolute; inset: 0;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 9px; font-weight: 900; letter-spacing: 1.5px; color: #5b3c00;
+    }
+    #strokeFill {
+      position: absolute; left: 0; top: 0; bottom: 0; width: 0%;
+      border-radius: 13px 4px 4px 13px;
+      background: linear-gradient(90deg, rgba(158,205,253,.35), rgba(158,205,253,.85));
+      box-shadow: 0 0 10px rgba(158,205,253,.5);
+    }
+    #strokeFill.in-zone {
+      background: linear-gradient(90deg, rgba(255,210,94,.5), #ffd25e);
+      box-shadow: 0 0 18px rgba(255,210,94,1);
+    }
+    #strokeFill.over {
+      background: linear-gradient(90deg, rgba(255,110,110,.5), #ff6e6e);
+      box-shadow: 0 0 18px rgba(255,90,90,.9);
+      animation: overShake .12s linear infinite;
+    }
+    @keyframes overShake {
+      0%, 100% { transform: translateX(0); }
+      50% { transform: translateX(2px); }
+    }
+
+    /* ---- Feedback popup ---- */
+    #feedback {
+      position: absolute; bottom: 132px; left: 50%; transform: translateX(-50%) scale(.6);
+      font-size: 30px; font-weight: 900; letter-spacing: 3px;
+      opacity: 0; transition: none; text-transform: uppercase;
+      text-shadow: 0 2px 12px rgba(0,0,0,.7);
+    }
+    #feedback.pop { animation: fbPop .8s ease-out forwards; }
+    @keyframes fbPop {
+      0% { opacity: 0; transform: translateX(-50%) scale(.5); }
+      15% { opacity: 1; transform: translateX(-50%) scale(1.15); }
+      30% { transform: translateX(-50%) scale(1); }
+      70% { opacity: 1; }
+      100% { opacity: 0; transform: translateX(-50%) scale(1) translateY(-24px); }
+    }
+
+    /* ---- Mute button ---- */
+    #muteBtn {
+      position: absolute; top: 14px; left: 14px; z-index: 20;
+      width: 44px; height: 44px; border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 20px; cursor: pointer; pointer-events: auto;
+      background: linear-gradient(180deg, rgba(0,32,91,.85), rgba(0,20,60,.85));
+      border: 1px solid rgba(255,255,255,.25);
+      box-shadow: 0 4px 16px rgba(0,0,0,.35);
+      backdrop-filter: blur(4px);
+      transition: transform .12s, filter .12s;
+    }
+    #muteBtn:hover { filter: brightness(1.3); transform: scale(1.08); }
+    #muteBtn.muted { opacity: .65; }
+
+    /* ---- Restart button (top right) + confirm dialog ---- */
+    #restartBtn {
+      position: absolute; top: 14px; right: 14px; z-index: 20;
+      width: 44px; height: 44px; border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 22px; font-weight: 800; cursor: pointer; pointer-events: auto;
+      color: #fff; font-family: inherit;
+      background: linear-gradient(180deg, rgba(0,32,91,.85), rgba(0,20,60,.85));
+      border: 1px solid rgba(255,255,255,.25);
+      box-shadow: 0 4px 16px rgba(0,0,0,.35);
+      backdrop-filter: blur(4px);
+      transition: transform .12s, filter .12s;
+    }
+    #restartBtn:hover { filter: brightness(1.3); transform: scale(1.08) rotate(-40deg); }
+    .confirmBox {
+      background: linear-gradient(180deg, rgba(0,32,91,.95), rgba(0,16,48,.95));
+      border: 1px solid rgba(255,255,255,.3);
+      border-radius: 18px; padding: 28px 34px; text-align: center;
+      box-shadow: 0 12px 40px rgba(0,0,0,.6);
+      max-width: min(420px, 88vw);
+    }
+    .confirmTitle { font-size: 26px; font-weight: 900; letter-spacing: 1px; margin-bottom: 8px; }
+    .confirmText { font-size: 14px; opacity: .85; line-height: 1.6; margin-bottom: 18px; }
+
+    @media (max-width: 640px) {
+      #muteBtn { top: auto; bottom: 14px; left: 10px; width: 38px; height: 38px; font-size: 17px; }
+      #restartBtn { top: auto; bottom: 14px; right: 10px; width: 38px; height: 38px; font-size: 19px; }
+    }
+
+    /* ---- Cinematic intro letterbox ---- */
+    #cinebars { position: absolute; inset: 0; pointer-events: none; }
+    .cbar {
+      position: absolute; left: 0; right: 0; height: 11vh; background: #04070f;
+      transition: transform .9s cubic-bezier(.7, 0, .3, 1);
+    }
+    .cbarTop { top: 0; transform: translateY(-101%); }
+    .cbarBot { bottom: 0; transform: translateY(101%); }
+    #cinebars.on .cbarTop { transform: translateY(0); }
+    #cinebars.on .cbarBot { transform: translateY(0); }
+    #introSkip {
+      position: absolute; bottom: calc(11vh + 14px); right: 18px;
+      font-size: 11px; letter-spacing: 2px; text-transform: uppercase;
+      color: rgba(255,255,255,.55); opacity: 0; transition: opacity .6s;
+    }
+    #cinebars.on #introSkip { opacity: 1; }
+
+    /* ---- RO! tempo cue ---- */
+    #roCue {
+      position: absolute; top: 22%; left: 50%; transform: translate(-50%, 0) scale(.5);
+      font-size: clamp(40px, 8vw, 74px); font-weight: 900; letter-spacing: 6px;
+      color: #ffd25e; text-shadow: 0 0 26px rgba(255,210,94,.8), 0 4px 14px rgba(0,0,0,.7);
+      opacity: 0; pointer-events: none;
+    }
+    #roCue.pop { animation: roPop .55s ease-out; }
+    @keyframes roPop {
+      0% { opacity: 0; transform: translate(-50%, 0) scale(.5); }
+      18% { opacity: 1; transform: translate(-50%, 0) scale(1.18); }
+      40% { transform: translate(-50%, 0) scale(1); }
+      100% { opacity: 0; transform: translate(-50%, -14px) scale(.95); }
+    }
+
+    /* ---- Tempo dots (Haaland's drum meter) ---- */
+    #tempoDots {
+      display: flex; align-items: center; justify-content: center; gap: 6px;
+      margin-bottom: 8px; height: 16px;
+    }
+    #tempoDots .drumIcon { font-size: 14px; margin-right: 4px; }
+    #tempoDots i {
+      width: 9px; height: 9px; border-radius: 50%;
+      background: rgba(255,255,255,.18); border: 1px solid rgba(255,255,255,.35);
+      transition: background .15s, box-shadow .15s;
+    }
+    #tempoDots i.on {
+      background: #ffd25e;
+      box-shadow: 0 0 8px rgba(255,210,94,.9);
+    }
+    #tempoDots.maxed .drumIcon { animation: drumShake .3s linear infinite; }
+    @keyframes drumShake {
+      0%, 100% { transform: rotate(-8deg); }
+      50% { transform: rotate(8deg); }
+    }
+
+    /* ---- Combo badge ---- */
+    #comboBadge {
+      position: absolute; bottom: 182px; left: 50%; transform: translateX(-50%) scale(0);
+      font-size: 20px; font-weight: 900; letter-spacing: 2px;
+      color: #ff9d2e; text-shadow: 0 0 14px rgba(255,157,46,.8), 0 2px 6px rgba(0,0,0,.7);
+      transition: transform .18s cubic-bezier(.34,1.56,.64,1);
+      pointer-events: none;
+    }
+    #comboBadge.show { transform: translateX(-50%) scale(1); }
+    #comboBadge.bump { animation: comboBump .25s ease-out; }
+    @keyframes comboBump {
+      0% { transform: translateX(-50%) scale(1.5); }
+      100% { transform: translateX(-50%) scale(1); }
+    }
+
+    /* ---- Speed lines vignette ---- */
+    #vignette {
+      position: absolute; inset: 0; pointer-events: none; opacity: 0;
+      background: radial-gradient(ellipse at center, transparent 55%, rgba(0, 10, 35, .55) 100%);
+      transition: opacity .4s;
+    }
+    #boostGlow {
+      position: absolute; inset: 0; pointer-events: none; opacity: 0;
+      background: radial-gradient(ellipse at center, transparent 45%, rgba(255, 190, 40, .38) 100%);
+      transition: opacity .25s;
+    }
+    #hitFlash {
+      position: absolute; inset: 0; pointer-events: none; opacity: 0;
+      background: radial-gradient(ellipse at center, rgba(255,40,40,.25), rgba(180,10,10,.5) 100%);
+    }
+    #hitFlash.on { animation: hitFlashAnim .5s ease-out; }
+    @keyframes hitFlashAnim {
+      0% { opacity: 1; }
+      100% { opacity: 0; }
+    }
+
+    /* ---- Overlay screens ---- */
+    .screen {
+      position: absolute; inset: 0; display: flex; flex-direction: column;
+      align-items: center; justify-content: center; gap: 14px;
+      overflow-y: auto; padding-top: 30px; padding-bottom: 30px;
+      background: radial-gradient(ellipse at 50% 35%, rgba(0,32,91,.55), rgba(4,10,30,.88));
+      pointer-events: auto; text-align: center; padding: 20px;
+      transition: opacity .5s;
+    }
+    .screen.hidden { opacity: 0; pointer-events: none; }
+    /* result screen: lighter veil so the fireworks show through */
+    #resultScreen {
+      background: radial-gradient(ellipse at 50% 35%, rgba(0,32,91,.30), rgba(4,10,30,.55));
+    }
+    .flag-band { display: flex; gap: 0; border-radius: 4px; overflow: hidden; box-shadow: 0 4px 20px rgba(0,0,0,.5); }
+    .flag-band span { width: 46px; height: 10px; }
+    /* ---- WebGL shader shield (replaces the #logoShield img when available) ---- */
+    #shieldWrap {
+      width: clamp(130px, 24vw, 210px);
+      aspect-ratio: 2 / 3;
+      pointer-events: none;
+      opacity: 0;
+      transform: translateY(-30px) scale(0.82);
+    }
+    #shieldWrap.in {
+      transition: opacity .55s ease-out, transform .85s cubic-bezier(.22, 1, .36, 1);
+      opacity: 1;
+      transform: translateY(0) scale(1);
+    }
+    #shieldCanvas {
+      width: 100%;
+      height: 100%;
+      display: block;
+      filter: drop-shadow(0 8px 26px rgba(255, 210, 94, .35)) drop-shadow(0 4px 12px rgba(0, 0, 0, .5));
+      will-change: transform;
+    }
+    #logoShield.logoHidden { display: none; }
+
+    /* ---- WebGL shader wordmark (replaces .title when WebGL is available) ---- */
+    #logoCanvas {
+      width: min(84vw, 620px);
+      aspect-ratio: 2172 / 724;
+      display: block;
+      pointer-events: none; /* purely visual — clicks pass straight through */
+      opacity: 0;
+      transform: translateY(18px) scale(0.94);
+      filter: drop-shadow(0 8px 22px rgba(120, 170, 235, .3)) drop-shadow(0 4px 12px rgba(0, 0, 0, .55));
+      will-change: transform;
+    }
+    #logoCanvas.in {
+      transition: opacity .7s ease-out, transform 1s cubic-bezier(.22, 1, .36, 1);
+      opacity: 1;
+      transform: translateY(0) scale(1);
+    }
+    .title.logoHidden { display: none; }
+
+    #logoShield {
+      width: clamp(120px, 22vw, 190px); height: auto;
+      filter: drop-shadow(0 6px 26px rgba(255, 210, 94, .45)) drop-shadow(0 3px 10px rgba(0, 0, 0, .55));
+    }
+    #resultShield {
+      width: 64px; height: auto;
+      filter: drop-shadow(0 3px 14px rgba(255, 210, 94, .4));
+    }
+    .title {
+      font-size: clamp(38px, 7vw, 72px); font-weight: 900; letter-spacing: 4px;
+      background: linear-gradient(180deg, #fff 30%, #9db5e8);
+      -webkit-background-clip: text; background-clip: text; color: transparent;
+      text-transform: uppercase; line-height: 1.05;
+      filter: drop-shadow(0 4px 14px rgba(0,0,0,.6));
+    }
+    .subtitle { font-size: clamp(14px, 2.2vw, 20px); font-weight: 600; letter-spacing: 5px; color: var(--no-red); text-transform: uppercase;
+      text-shadow: 0 0 18px rgba(186,12,47,.5); }
+    .introText {
+      font-size: 15px; line-height: 1.8; opacity: .9; max-width: 440px;
+    }
+    .menuBtns { display: flex; gap: 14px; flex-wrap: wrap; justify-content: center; }
+    .ctaSecondary {
+      background: linear-gradient(180deg, rgba(0,50,130,.9), rgba(0,32,91,.9));
+      box-shadow: 0 6px 24px rgba(0,32,91,.5), inset 0 1px 0 rgba(255,255,255,.2);
+      animation: none;
+    }
+    .titleSmall { font-size: clamp(24px, 5vw, 40px); }
+    .howtoGrid {
+      display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+      gap: 10px; width: min(600px, 90vw);
+    }
+    .howCard {
+      background: rgba(0, 20, 60, .65); border: 1px solid rgba(255,255,255,.22);
+      border-radius: 12px; padding: 12px 14px; text-align: left;
+      font-size: 13.5px; line-height: 1.55;
+    }
+    .howCard b { color: #ffd25e; }
+    .touchOnly { display: none; }
+    @media (pointer: coarse) {
+      .touchOnly { display: inline; }
+      .deskOnly { display: none; }
+    }
+
+    /* ---- Mobile touch controls ---- */
+    #touchControls {
+      position: absolute; left: 0; right: 0; bottom: 104px;
+      display: none; justify-content: space-between; align-items: flex-end;
+      padding: 0 16px; pointer-events: none;
+    }
+    #touchControls button {
+      pointer-events: auto; color: #fff; font-family: inherit; font-weight: 900;
+      border: 1px solid rgba(255,255,255,.45);
+      background: linear-gradient(180deg, rgba(0,32,91,.8), rgba(0,20,60,.8));
+      box-shadow: 0 6px 18px rgba(0,0,0,.45);
+      touch-action: none; -webkit-user-select: none; user-select: none; -webkit-touch-callout: none;
+    }
+    #steerBtns { display: flex; gap: 12px; }
+    #steerBtns button { width: 66px; height: 66px; border-radius: 50%; font-size: 26px; }
+    #rowBtn {
+      width: 100px; height: 100px; border-radius: 50%;
+      font-size: 24px; letter-spacing: 2px;
+      background: linear-gradient(180deg, #d81a3f, var(--no-red)) !important;
+    }
+    #rowBtn:active, #steerBtns button:active { filter: brightness(1.35); transform: scale(.94); }
+    @media (pointer: coarse) {
+      #touchControls.active { display: flex; }
+    }
+    kbd {
+      display: inline-block; padding: 2px 9px; border-radius: 6px;
+      background: rgba(255,255,255,.12); border: 1px solid rgba(255,255,255,.35);
+      border-bottom-width: 3px; font-family: inherit; font-weight: 700; font-size: 13px;
+    }
+    .cta {
+      margin-top: 8px; font-size: 18px; font-weight: 800; letter-spacing: 3px;
+      color: #fff; padding: 14px 42px; border-radius: 999px; cursor: pointer;
+      background: linear-gradient(180deg, #d81a3f, var(--no-red));
+      border: 1px solid rgba(255,255,255,.4);
+      box-shadow: 0 6px 24px rgba(186,12,47,.5), inset 0 1px 0 rgba(255,255,255,.3);
+      animation: pulse 1.6s ease-in-out infinite;
+      text-transform: uppercase;
+    }
+    .cta:hover { filter: brightness(1.15); }
+    @keyframes pulse { 0%,100% { transform: scale(1); } 50% { transform: scale(1.05); } }
+
+    #resultStats { display: flex; gap: 16px; flex-wrap: wrap; justify-content: center; }
+    #resultStats .pill { min-width: 130px; padding: 12px 20px; }
+    #resultTitle { font-size: clamp(30px, 6vw, 56px); }
+    #medal { font-size: 60px; line-height: 1; filter: drop-shadow(0 4px 10px rgba(0,0,0,.5)); }
+
+    /* ---- Score + leaderboard ---- */
+    #scoreBox {
+      text-align: center; padding: 10px 34px; border-radius: 14px;
+      background: linear-gradient(180deg, rgba(255,210,94,.16), rgba(255,157,46,.08));
+      border: 1px solid rgba(255,210,94,.45);
+      box-shadow: 0 4px 20px rgba(0,0,0,.3);
+    }
+    #scoreBox .label { font-size: 10px; letter-spacing: 3px; opacity: .8; }
+    #resScore {
+      font-size: clamp(34px, 6vw, 52px); font-weight: 900; line-height: 1.1;
+      color: #ffd25e; text-shadow: 0 0 18px rgba(255,210,94,.5);
+      font-variant-numeric: tabular-nums;
+    }
+    #scoreBreakdown { font-size: 11px; opacity: .75; letter-spacing: .5px; margin-top: 2px; }
+
+    #saveRow { display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; }
+    #aliasInput {
+      padding: 12px 16px; border-radius: 10px; font-size: 15px; font-weight: 600;
+      font-family: inherit; color: #fff; width: 210px; text-align: center;
+      background: rgba(0, 20, 60, .75); border: 1px solid rgba(255,255,255,.35);
+      outline: none;
+    }
+    #aliasInput:focus { border-color: #ffd25e; box-shadow: 0 0 12px rgba(255,210,94,.35); }
+    #aliasInput::placeholder { color: rgba(255,255,255,.45); }
+    #saveScoreBtn {
+      padding: 12px 22px; border-radius: 10px; font-size: 13px; font-weight: 800;
+      letter-spacing: 1px; font-family: inherit; color: #fff; cursor: pointer;
+      background: linear-gradient(180deg, #d81a3f, var(--no-red));
+      border: 1px solid rgba(255,255,255,.4); text-transform: uppercase;
+    }
+    #saveScoreBtn:hover { filter: brightness(1.15); }
+    .hiddenMsg { display: none; }
+    #placeBanner {
+      font-size: clamp(18px, 3.4vw, 28px); font-weight: 900; letter-spacing: 2px;
+      color: #ffd25e; text-shadow: 0 0 16px rgba(255,210,94,.55), 0 2px 8px rgba(0,0,0,.6);
+      text-transform: uppercase;
+    }
+    #placeBanner:empty { display: none; }
+    .linkBtn {
+      background: none; border: none; color: rgba(255,255,255,.55);
+      font-family: inherit; font-size: 12px; letter-spacing: 1px;
+      text-decoration: underline; cursor: pointer; padding: 2px 8px;
+    }
+    .linkBtn:hover { color: rgba(255,255,255,.9); }
+    #savedMsg { font-size: 14px; font-weight: 700; color: #7dff9e; letter-spacing: 1px; }
+    #savedMsg.show { display: block; }
+
+    .lbWrap { width: min(400px, 84vw); }
+    .lbTitle { font-size: 12px; letter-spacing: 3px; opacity: .85; margin-bottom: 6px; text-align: center; }
+    .lbList {
+      list-style: none; counter-reset: lb; max-height: 26vh; overflow-y: auto;
+      background: rgba(0, 20, 60, .55); border: 1px solid rgba(255,255,255,.2);
+      border-radius: 12px; padding: 6px 0;
+    }
+    .lbList li {
+      counter-increment: lb;
+      display: flex; align-items: baseline; gap: 10px;
+      padding: 5px 16px; font-size: 14px; font-weight: 600;
+    }
+    .lbList li::before {
+      content: counter(lb) "."; width: 22px; text-align: right;
+      opacity: .6; font-variant-numeric: tabular-nums;
+    }
+    .lbList li:nth-child(1)::before { content: "🥇"; }
+    .lbList li:nth-child(2)::before { content: "🥈"; }
+    .lbList li:nth-child(3)::before { content: "🥉"; }
+    .lbList .lbName { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .lbList .lbScore { font-weight: 800; color: #ffd25e; font-variant-numeric: tabular-nums; }
+    .lbList .lbTime { font-size: 11px; opacity: .6; font-variant-numeric: tabular-nums; }
+    .lbList li.me {
+      background: linear-gradient(90deg, rgba(255,210,94,.18), transparent);
+      color: #ffd25e;
+    }
+    .lbList li.empty { justify-content: center; opacity: .55; font-weight: 500; }
+    .lbList li.empty::before { content: ""; width: 0; }
+    #lbStartWrap { margin-top: 4px; }
+    #lbStartWrap .lbList { max-height: 18vh; }
+
+    /* ---- Victory confetti ---- */
+    .confetti {
+      position: absolute; top: -50px; pointer-events: none;
+      animation-name: confFall; animation-timing-function: linear; animation-fill-mode: forwards;
+      filter: drop-shadow(0 2px 4px rgba(0,0,0,.4));
+    }
+    @keyframes confFall {
+      to { transform: translateY(115vh) rotate(680deg); opacity: .9; }
+    }
+
+    /* countdown */
+    #countdown {
+      position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
+      font-size: clamp(80px, 18vw, 180px); font-weight: 900; pointer-events: none;
+      color: #fff; text-shadow: 0 6px 30px rgba(0,0,0,.6); opacity: 0;
+    }
+    #countdown.tick { animation: cdTick 1s ease-out; }
+    @keyframes cdTick {
+      0% { opacity: 0; transform: scale(1.8); }
+      20% { opacity: 1; transform: scale(1); }
+      80% { opacity: 1; }
+      100% { opacity: 0; transform: scale(.9); }
+    }
+
+    #touchHint { display: none; }
+    @media (pointer: coarse) {
+      #touchHint { display: block; }
+      .desktopHint { display: none; }
+    }
+
+    /* compact HUD on narrow screens */
+    @media (max-width: 640px) {
+      .topbar { gap: 6px; padding: 0 6px; flex-wrap: nowrap; }
+      .pill { min-width: 0; flex: 1 1 0; padding: 6px 6px; border-radius: 10px; }
+      .pill .label { font-size: 8px; letter-spacing: 1px; white-space: nowrap; }
+      .pill .value { font-size: 16px; }
+      .pill .value small { font-size: 9px; }
+      #resultStats .pill { flex: 0 1 auto; min-width: 100px; }
+    }
+  </style>
+</head>
+<body>
+  <div id="app"></div>
+
+  <div id="hud">
+    <div id="vignette"></div>
+    <div id="boostGlow"></div>
+    <div id="hitFlash"></div>
+
+    <button id="muteBtn" aria-label="Slå av/på lyd">🔊</button>
+    <button id="restartBtn" aria-label="Start på nytt" style="display:none">↻</button>
+
+    <!-- Restart confirmation (pauses the game) -->
+    <div class="screen hidden" id="confirmScreen">
+      <div class="confirmBox">
+        <div class="confirmTitle">Starte på nytt?</div>
+        <div class="confirmText">Løpet settes på pause. Vil du avbryte og ro fra startstreken igjen?</div>
+        <div class="menuBtns">
+          <button class="cta" id="confirmYes">Ja, start på nytt</button>
+          <button class="cta ctaSecondary" id="confirmNo">Nei, fortsett</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="topbar" id="topbar" style="display:none">
+      <div class="pill">
+        <div class="label">Tid</div>
+        <div class="value" id="hudTime">0:00.0</div>
+      </div>
+      <div class="pill">
+        <div class="label">Fart</div>
+        <div class="value" id="hudSpeed">0 <small>km/t</small></div>
+      </div>
+      <div class="pill">
+        <div class="label">Distanse</div>
+        <div class="value" id="hudDist">0 <small>m</small></div>
+      </div>
+      <div class="pill" style="border-color: rgba(255,210,94,.5)">
+        <div class="label">⚽ Fotballer</div>
+        <div class="value" id="hudBalls">0</div>
+      </div>
+      <div class="pill" id="posPill">
+        <div class="label">Posisjon</div>
+        <div class="value" id="hudPos">1.</div>
+      </div>
+    </div>
+
+    <div id="feedback"></div>
+    <div id="comboBadge"></div>
+    <div id="roCue">RO!</div>
+
+    <div id="strokeMeterWrap" style="display:none">
+      <div id="tempoDots"><span class="drumIcon">🥁</span></div>
+      <div id="strokeHint"><span class="desktopHint">HOLD <kbd>SPACE</kbd> — ta i — og SLIPP i det gylne feltet!</span><span id="touchHint">HOLD på skjermen — og SLIPP i det gylne feltet!</span></div>
+      <div id="strokeMeter">
+        <div id="strokeZoneGood"></div>
+        <div id="strokeZone"></div>
+        <div id="strokeFill"></div>
+      </div>
+    </div>
+
+    <div id="countdown"></div>
+
+    <div id="touchControls">
+      <div id="steerBtns">
+        <button id="btnL" aria-label="Styr venstre">◀</button>
+        <button id="btnR" aria-label="Styr høyre">▶</button>
+      </div>
+      <button id="rowBtn" aria-label="Ro">RO</button>
+    </div>
+
+    <!-- Cinematic intro letterbox -->
+    <div id="cinebars" class="on">
+      <div class="cbar cbarTop"></div>
+      <div class="cbar cbarBot"></div>
+      <div id="introSkip">trykk for å hoppe over</div>
+    </div>
+
+    <!-- Start screen -->
+    <div class="screen hidden" id="startScreen">
+      <img id="logoShield" src="/norge-skjold.png" alt="Norge-skjoldet" decoding="async"
+           onload="document.getElementById('flagBand').style.display='none'"
+           onerror="this.style.display='none'">
+      <div class="flag-band" id="flagBand">
+        <span style="background:#ba0c2f"></span><span style="background:#fff"></span><span style="background:#00205b"></span><span style="background:#fff"></span><span style="background:#ba0c2f"></span>
+      </div>
+      <div class="title">Vikingferd</div>
+      <div class="subtitle">⚽ Team Norway Rowing ⚽</div>
+      <div class="introText">
+        Ro Norges vikingskip gjennom fjorden til det store fotballmålet —
+        og slå Sverige på veien! 🇳🇴
+      </div>
+      <div class="menuBtns">
+        <button class="cta" id="startBtn">START</button>
+        <button class="cta ctaSecondary" id="lbBtn">🏆 Toppliste</button>
+      </div>
+    </div>
+
+    <!-- How-to modal (shown after START, before the race) -->
+    <div class="screen hidden" id="howtoScreen">
+      <div class="title titleSmall">SLIK SPILLER DU</div>
+      <div class="howtoGrid">
+        <div class="howCard">🚣 <b>RO:</b> <span class="deskOnly">HOLD <kbd>SPACE</kbd></span><span class="touchOnly">HOLD den røde RO-knappen</span> — kraften bygger — og <b>SLIPP i det gylne feltet</b></div>
+        <div class="howCard">🥁 <b>TAKT:</b> Haaland trommer og roper «RO!» — slipp taket på ropet for å bygge tempo og nå <b>MAX FART</b></div>
+        <div class="howCard">🧭 <b>STYR:</b> <span class="deskOnly"><kbd>←</kbd> <kbd>→</kbd> eller <kbd>A</kbd> <kbd>D</kbd></span><span class="touchOnly">pilknappene nede til venstre</span></div>
+        <div class="howCard">🚩 <b>PORTER:</b> Ro gjennom de lysende portene for fartsbonus</div>
+        <div class="howCard">⚽ <b>FOTBALLER:</b> Samle dem for turbo-boost</div>
+        <div class="howCard">🧊 <b>UNNGÅ:</b> Isflakene i leia — og ikke la Sverige dytte deg ut av kurs!</div>
+      </div>
+      <button class="cta" id="goBtn">RO! 🚣</button>
+    </div>
+
+    <!-- Leaderboard modal (from the splash screen) -->
+    <div class="screen hidden" id="lbScreen">
+      <div class="title titleSmall">🏆 TOPPLISTE</div>
+      <div class="lbWrap">
+        <ol id="lbStart" class="lbList"></ol>
+      </div>
+      <button class="cta ctaSecondary" id="lbCloseBtn">Lukk</button>
+    </div>
+
+    <!-- Result screen -->
+    <div class="screen hidden" id="resultScreen">
+      <img id="resultShield" src="/norge-skjold.png" alt="" decoding="async"
+           onerror="this.style.display='none'">
+      <div id="medal">🏆</div>
+      <div class="title" id="resultTitle">MÅL!</div>
+      <div class="subtitle" id="resultSub">Norge scorer!</div>
+      <div id="placeBanner"></div>
+      <div id="resultStats">
+        <div class="pill"><div class="label">Tid</div><div class="value" id="resTime">—</div></div>
+        <div class="pill"><div class="label">Beste tid</div><div class="value" id="resBest">—</div></div>
+        <div class="pill"><div class="label">⚽ Fotballer</div><div class="value" id="resBalls">—</div></div>
+        <div class="pill"><div class="label">Perfekte tak</div><div class="value" id="resPerfect">—</div></div>
+      </div>
+      <div id="scoreBox">
+        <div class="label">POENGSUM</div>
+        <div id="resScore">—</div>
+        <div id="scoreBreakdown"></div>
+      </div>
+      <div id="saveRow">
+        <input id="aliasInput" maxlength="14" placeholder="Skriv navn / alias…" autocomplete="off">
+        <button id="saveScoreBtn">Lagre</button>
+      </div>
+      <button id="skipSaveBtn" class="linkBtn">hopp over</button>
+      <div id="savedMsg" class="hiddenMsg">✅ Lagret på topplisten!</div>
+      <div class="lbWrap" id="lbResultWrap">
+        <div class="lbTitle">🏆 TOPPLISTE</div>
+        <ol id="leaderboard" class="lbList"></ol>
+      </div>
+      <button class="cta" id="retryBtn">Ro igjen</button>
+    </div>
+  </div>
+
+  <script type="module" src="/src/main.js"></script>
+</body>
+</html>

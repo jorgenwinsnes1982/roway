@@ -1,0 +1,20 @@
+# Netlify build configuration for Vikingferd (Vite + Three.js)
+# Served from the domain root, so Vite's default absolute-from-root asset paths
+# (/assets/..., /norge-skjold.png, /vector_wood_paddle.svg) resolve correctly.
+
+[build]
+  command = "npm run build"
+  publish = "dist"
+  functions = "netlify/functions"
+
+# Local `netlify dev` only (never affects production). Pin the Vite target port
+# so netlify dev proxies THIS app even when another project already holds 5173.
+[dev]
+  command = "npx vite --port 5288 --strictPort"
+  targetPort = 5288
+
+# NOTE: no SPA catch-all redirect. This app has no client-side routing, so it
+# isn't needed — and a `/* -> /index.html` rewrite breaks `netlify dev` by
+# rewriting Vite's dev module requests (/src/main.js) to index.html. If client
+# routing is ever added, reintroduce it AND exclude the dev module paths
+# (/src/*, /@vite/*, /node_modules/*) so local dev keeps working.
