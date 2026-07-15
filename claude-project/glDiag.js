@@ -16,8 +16,28 @@ export const glDiag = {
   notes: [],    // free-form fallback decisions / recovery attempts
   boot: {},     // boot phase timestamps (ms since page start)
   env: {},      // context/extension support snapshot (filled by main.js)
+  frames: 0,    // incremented every frame() tick — proves the loop is ALIVE
+  pixel: null,  // periodic canvas-centre readback { f, rgba } — proves paint
 };
 window.__glDiag = glDiag;
+
+// Trap the errors we can't see without a cabled Web Inspector: an uncaught
+// exception in the rAF callback kills three's setAnimationLoop silently —
+// on-device that reads as "the world just never appears" with zero console.
+// First finding on iPhone 16 Pro (iOS 18.7): context alive, framebuffer
+// COMPLETE, no GL errors — so the remaining suspects are exactly this kind
+// of invisible JS failure. Cap the log so a repeating error can't grow it.
+window.addEventListener('error', (e) => {
+  if (glDiag.notes.length < 40) {
+    glDiag.notes.push(`JS ERR: ${e.message} @${(e.filename || '').split('/').pop()}:${e.lineno}`);
+  }
+});
+window.addEventListener('unhandledrejection', (e) => {
+  if (glDiag.notes.length < 40) {
+    const r = e.reason;
+    glDiag.notes.push(`REJECTION: ${r && (r.message || String(r))}`);
+  }
+});
 
 const now = () => Math.round(performance.now());
 

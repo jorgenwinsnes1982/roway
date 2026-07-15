@@ -1922,6 +1922,7 @@ function stepPreload(dt) {
       }
       PRELOAD.active = false;
       if (hud.preloaderScreen) hud.preloaderScreen.classList.add('hidden');
+      glDiag.boot.preloaderHidden = Math.round(performance.now()); // proves this path ran (?dev overlay)
       showWinsenIntroCard();
     }
   }
@@ -5129,7 +5130,24 @@ function update(dt, realDt = dt) {
 // immediately, not 500ms later when the class itself is stripped.
 const MENU_RENDER_INTERVAL = 1 / 30; // seconds
 let menuRenderAcc = 0;
+// Guarded wrapper: an uncaught throw inside the rAF callback KILLS three's
+// setAnimationLoop silently — on-device that reads as "the world never
+// appears" with no console to check. That's exactly the iPhone 16 Pro
+// symptom profile the ?dev overlay ruled everything else out of (context
+// alive, framebuffer complete, zero GL errors — and still no world), so the
+// remaining suspects are invisible JS exceptions in this very loop. Log the
+// first occurrences for the overlay and keep the loop alive: one broken
+// frame must never end the session. The interval fallback below throws the
+// same way, so without this guard BOTH drivers die.
 function frame(maxDt = 0.05) {
+  glDiag.frames++;
+  try {
+    frameInner(maxDt);
+  } catch (err) {
+    if (glDiag.notes.length < 40) glDiagNote(`FRAME ERR: ${err && err.message ? err.message : err}`);
+  }
+}
+function frameInner(maxDt) {
   const now = performance.now();
   const rawDtSec = (now - lastFrameT) / 1000;
   const dt = Math.min(rawDtSec, maxDt); // gameplay clamp — keeps physics stable under lag spikes
@@ -5162,6 +5180,22 @@ function frame(maxDt = 0.05) {
   if (composerBypassed) renderer.render(scene, camera);
   else composer.render();
   if (!glDiag.boot.firstLoopRender) glDiag.boot.firstLoopRender = Math.round(performance.now());
+  // paint-proof (dev-gated, ~once/sec): sample the canvas centre right after
+  // the render, in the SAME task — valid without preserveDrawingBuffer. A
+  // non-black rgba proves the world is genuinely painted to the drawing
+  // buffer; persistent [0,0,0,255]/[0,0,0,0] proves a black/empty canvas
+  // even though every GL status check reads healthy. The readPixels sync
+  // stall (~1ms) only exists behind ?dev=roway2026.
+  if (DEV_TOOLS && glDiag.frames % 60 === 0) {
+    try {
+      const gl = renderer.getContext();
+      const px = new Uint8Array(4);
+      gl.readPixels((gl.drawingBufferWidth / 2) | 0, (gl.drawingBufferHeight / 2) | 0, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, px);
+      glDiag.pixel = { f: glDiag.frames, rgba: Array.from(px) };
+    } catch (e) {
+      glDiag.pixel = { f: glDiag.frames, err: String(e) };
+    }
+  }
 }
 renderer.setAnimationLoop(() => frame());
 // Shader pre-warm: compile every scene material and warm the post-processing
@@ -5311,6 +5345,11 @@ if (DEV_TOOLS) {
     glPanel.textContent = [
       'ROWAY GL DIAG (tap to close)',
       `mainContextLost NOW: ${gl.isContextLost()}   safeComposer: ${composerSafeMode}   bypassed: ${composerBypassed}   ios: ${IS_IOS_WEBKIT}`,
+      // loop-alive + paint-proof: frames must keep climbing between two
+      // screenshots; pixel is a canvas-centre sample taken right after a
+      // render (persistent 0,0,0 = black canvas despite healthy GL)
+      `frames: ${glDiag.frames}   mode: ${G.mode}   preload: ${PRELOAD.active}   intro: ${INTRO.active}`,
+      `pixel: ${glDiag.pixel ? JSON.stringify(glDiag.pixel) : '(pending)'}   buf: ${gl.drawingBufferWidth}x${gl.drawingBufferHeight}`,
       `ctx created: ${fmtEvts(glDiag.ctx)}`,
       `ctx LOST:    ${fmtEvts(glDiag.lost)}`,
       `ctx restored:${fmtEvts(glDiag.restored)}`,
