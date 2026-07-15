@@ -626,6 +626,29 @@
     }
     #cinebars.on #introSkip { opacity: 1; }
 
+    /* ---- "Presented by Winsen" intro sting: overlays the boot cinematic
+       for a few seconds, then dissolves — main.js toggles .show/.hide (see
+       showWinsenIntroCard()). Absolute + pointer-events:none, same as
+       #cinebars, so it never intercepts the skip-tap listener underneath.
+       Sits above the 3D canvas but below the preloader (z-index scale: see
+       #preloaderScreen), which will already be gone by the time this shows. ---- */
+    #winsenIntroCard {
+      position: absolute; left: 50%; top: 42%; z-index: 15;
+      width: min(58vw, 420px); pointer-events: none;
+      opacity: 0; transform: translate(-50%, -46%) scale(.82);
+      filter: drop-shadow(0 4px 18px rgba(0,0,0,.55));
+      transition: opacity .5s ease, transform .5s cubic-bezier(.34, 1.56, .64, 1);
+    }
+    #winsenIntroCard img { display: block; width: 100%; height: auto; }
+    #winsenIntroCard.show { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+    #winsenIntroCard.hide {
+      opacity: 0; transform: translate(-50%, -54%) scale(1.06);
+      transition: opacity .55s cubic-bezier(.4, 0, 1, 1), transform .55s cubic-bezier(.4, 0, 1, 1);
+    }
+    @media (max-width: 640px) {
+      #winsenIntroCard { width: min(72vw, 320px); top: 39%; }
+    }
+
     /* ---- RO! tempo cue ---- */
     #roCue {
       position: absolute; top: 22%; left: 50%; transform: translate(-50%, 0) scale(.5);
@@ -2205,6 +2228,10 @@
       <div class="cbar cbarBot"></div>
       <div id="introSkip">tap to skip</div>
     </div>
+
+    <!-- "Presented by Winsen" intro sting — see showWinsenIntroCard() in
+         main.js for the show/hold/hide timing. -->
+    <div id="winsenIntroCard"><img src="/winsen_intro.svg" alt="A game by Winsen" width="350" height="49"></div>
 
     <!-- Start screen -->
     <div class="screen hidden" id="startScreen">

@@ -234,8 +234,33 @@ const fragmentShader = /* glsl */ `
   }
 `;
 
+// ---- Water plane extent (perf trim, fully reversible) ----
+// The ocean plane used to be 1400 × 3400 (190 × 420 segments = 159,600 tris,
+// ~62% of the whole frame's triangle budget). Most of that was never visible:
+// scene.fog fully occludes everything past ~1150 m (fogFar), and the forward-
+// facing chase camera never sees the 1700 m of plane BEHIND the ship. This
+// trims the LENGTH only and biases the plane forward, so coverage becomes
+// ~1600 m ahead (comfortably past the fog wall) / ~400 m behind the ship.
+//
+// Vertex DENSITY is preserved exactly (WATER_SEG_* below derive the segment
+// counts from the ORIGINAL 1400/190 and 3400/420 spacing), so every wave is
+// byte-identical — this removes only fully-fogged / off-screen ocean, never
+// wave detail. Width is left at the original 1400 so the lateral extent, which
+// already ~matched the view frustum, is untouched (no horizon-edge risk).
+//
+// TO REVERT to the original full plane, set:
+//   WATER_W = 1400, WATER_L = 3400, WATER_FWD_BIAS = 0
+// (the segment counts and the update() offset then follow automatically).
+const WATER_W = 1400;        // width — unchanged from the original
+const WATER_L = 2000;        // length — was 3400 (the trimmed dimension)
+const WATER_FWD_BIAS = 600;  // metres the plane is shifted forward of the ship (−z); was 0
+const _SPACING_W = 1400 / 190; // original vertex spacing, kept identical
+const _SPACING_L = 3400 / 420;
+const WATER_SEG_W = Math.round(WATER_W / _SPACING_W); // = 190 (unchanged)
+const WATER_SEG_L = Math.round(WATER_L / _SPACING_L); // = 247
+
 export function createWater({ sunDir, fogColor, fogNear, fogFar }) {
-  const geo = new THREE.PlaneGeometry(1400, 3400, 190, 420);
+  const geo = new THREE.PlaneGeometry(WATER_W, WATER_L, WATER_SEG_W, WATER_SEG_L);
   geo.rotateX(-Math.PI / 2);
 
   const uniforms = {
@@ -266,8 +291,10 @@ export function createWater({ sunDir, fogColor, fogNear, fogFar }) {
     mesh,
     update(t, shipZ) {
       uniforms.uTime.value = t;
-      // keep the water plane centered under the ship along the course
-      mesh.position.z = shipZ;
+      // follow the ship, biased forward (−z) so the trimmed plane's coverage
+      // sits ahead of the boat where the camera actually looks (see the
+      // WATER_FWD_BIAS note above). WATER_FWD_BIAS = 0 restores dead-centre.
+      mesh.position.z = shipZ - WATER_FWD_BIAS;
     },
     // hull-wash driver — called once per frame from main.js with both ships'
     // live position/heading/speed so the wash follows them in every mode

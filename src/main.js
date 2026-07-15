@@ -129,7 +129,18 @@ initAudio();
 
 // ================= Renderer / Scene =================
 const app = document.getElementById('app');
-const renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' });
+// antialias:false is deliberate, not an oversight: the scene is ONLY ever
+// drawn through the EffectComposer below, whose render target is created with
+// samples:4 (MSAA) — that is what antialiases every scene edge. The main
+// scene is never drawn to the default framebuffer directly (grep confirms the
+// only renderer.render(scene,...) calls live in logo.js/shield.js, which own
+// SEPARATE renderers/canvases). So enabling antialias here would allocate a
+// multisampled DEFAULT framebuffer that only ever receives OutputPass's
+// fullscreen-triangle blit — a blit has no internal edges to smooth, so that
+// buffer's MSAA is pure wasted VRAM + resolve bandwidth, most costly exactly
+// on the fill-rate-bound mobile GPUs we care about. Turning it off changes
+// nothing visible (composer MSAA still does the AA) and frees that buffer.
+const renderer = new THREE.WebGLRenderer({ antialias: false, powerPreference: 'high-performance' });
 renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
 renderer.setSize(window.innerWidth, window.innerHeight);
 renderer.outputColorSpace = THREE.SRGBColorSpace;
@@ -916,10 +927,32 @@ function runIntroCamera(dt) {
 // a challenge deep-link) so it never lingers into the menu/race.
 function hideIntroLandmarks() { introLandmarks.visible = false; }
 
+// "Presented by Winsen" intro sting (public/winsen_intro.svg) — shown once,
+// right as the boot cinematic starts (the preloader has just hidden — see
+// its trigger in stepPreload()), held a couple seconds, then dissolved via
+// the .show/.hide CSS transitions in index.html. Skipped entirely when the
+// intro itself never plays — the INTRO.active guard covers the
+// challenge-deep-link boot path (initChallengeFromURL), which can already
+// have ended the intro before this ever fires.
+const WINSEN_CARD_HOLD_MS = 2200;
+function showWinsenIntroCard() {
+  if (!INTRO.active) return;
+  hud.winsenIntroCard.classList.add('show');
+  setTimeout(() => { if (INTRO.active) hideWinsenIntroCard(); }, WINSEN_CARD_HOLD_MS);
+}
+// called from every path that can end/skip the intro early (alongside the
+// existing hideIntroLandmarks() calls below) so the card never lingers into
+// the menu or a race started out from under the cinematic.
+function hideWinsenIntroCard() {
+  hud.winsenIntroCard.classList.remove('show');
+  hud.winsenIntroCard.classList.add('hide');
+}
+
 function endIntro() {
   if (!INTRO.active) return;
   INTRO.active = false;
   hideIntroLandmarks();
+  hideWinsenIntroCard();
   // land the fleet on its exact menu spots — the choreography ends here
   // anyway when it plays out in full, so this only "jumps" on a skip-tap
   // (where the hard cut to the menu camera hides it completely)
@@ -1262,6 +1295,7 @@ window.addEventListener('blur', () => { chargePtr = null; releaseStroke(); }); /
 const $ = (id) => document.getElementById(id);
 const hud = {
   preloaderScreen: $('preloaderScreen'), preloadPct: $('preloadPct'),
+  winsenIntroCard: $('winsenIntroCard'),
   topbar: $('topbar'), time: $('hudTime'), speed: $('hudSpeed'), balls: $('hudBallsCount'),
   meterWrap: $('strokeMeterWrap'), fill: $('oarFill'), zone: $('oarZoneBand'),
   meter: $('strokeMeter'), pendulum: $('pendulumCanvas'),
@@ -1775,6 +1809,7 @@ function stepPreload(dt) {
       }
       PRELOAD.active = false;
       if (hud.preloaderScreen) hud.preloaderScreen.classList.add('hidden');
+      showWinsenIntroCard();
     }
   }
 }
@@ -3056,6 +3091,7 @@ function initChallengeFromURL() {
   // cinematic they didn't ask for — skip it silently
   INTRO.active = false;
   hideIntroLandmarks();
+  hideWinsenIntroCard();
   camPos.set(0, 15.5, 27);
   document.getElementById('cinebars').classList.remove('on');
   document.getElementById('controlsBtn').style.display = ''; // hidden during the intro — see index.html
@@ -3319,6 +3355,7 @@ function startRace(quick) {
   if (INTRO.active) {
     INTRO.active = false;
     hideIntroLandmarks();
+    hideWinsenIntroCard();
     document.getElementById('cinebars').classList.remove('on');
     document.getElementById('controlsBtn').style.display = ''; // hidden during the intro — see index.html
   }
@@ -4248,7 +4285,7 @@ const camLook = new THREE.Vector3();
 initChallengeFromURL(); // Fase 2: must run after camPos exists
 let shakeAmt = 0;
 
-function update(dt) {
+function update(dt, realDt = dt) {
   // hitstop: brief slow-motion after a crash for impact weight
   if (G.hitStop > 0) {
     G.hitStop -= dt;
@@ -4256,8 +4293,21 @@ function update(dt) {
   }
   waterT += dt;
 
-  // boot preloader — ticks/renders before anything else while active
-  stepPreload(dt);
+  // boot preloader — ticks/renders before anything else while active.
+  // Deliberately driven by realDt (real wall-clock elapsed time, only loosely
+  // bounded), NOT the gameplay-clamped `dt` (capped at 50ms/frame in frame()
+  // to keep physics stable under lag spikes). The preloader is cosmetic UI
+  // pacing, not physics — but boot is exactly when the main thread is
+  // busiest (JS parse/eval, GC, first shader compiles) and real frame rate
+  // is at its lowest for the whole session. Driving this bar off the clamped
+  // dt meant a depressed boot frame rate silently inflated the "2.2s+0.7s"
+  // nominal animation into several real seconds — e.g. measured 29 frames
+  // averaging 266ms apiece (clamp hit on every single one) stretched a
+  // nominal 2.9s bar into 7.7s of real wall-clock time behind the opaque
+  // #preloaderScreen, which is what actually read as "the world takes ~10s
+  // to appear". Using realDt makes the bar (and the MUSIC_WAIT_CAP hold)
+  // track real time regardless of how choppy boot is.
+  stepPreload(realDt);
 
   // cinematic intro: drive the two-ship sprint (positions/cadence/spray)
   // before the on-water seating below reads them. Holds until the preloader
@@ -4968,9 +5018,23 @@ const MENU_RENDER_INTERVAL = 1 / 30; // seconds
 let menuRenderAcc = 0;
 function frame(maxDt = 0.05) {
   const now = performance.now();
-  const dt = Math.min((now - lastFrameT) / 1000, maxDt);
+  const rawDtSec = (now - lastFrameT) / 1000;
+  const dt = Math.min(rawDtSec, maxDt); // gameplay clamp — keeps physics stable under lag spikes
+  // realDt: only loosely bounded (0.5s, covers a backgrounded-tab resume
+  // without one giant catch-up jump) — used for cosmetic, wall-clock-paced
+  // UI (currently just the boot preloader bar, see update()). Boot is
+  // exactly when real frame rate is at its lowest for the whole session
+  // (JS parse/eval, GC, first shader compiles all competing for the main
+  // thread), so anything timed off the gameplay-clamped `dt` there silently
+  // runs in slow motion relative to the wall clock the player is actually
+  // waiting against — measured on a throttled boot: 29 frames averaging
+  // 266ms apiece stretched a nominal 2.9s preloader animation into 7.7s of
+  // real time behind the opaque #preloaderScreen, i.e. exactly the reported
+  // "ship/world appears ~10s late" symptom, with the canvas rendering fine
+  // underneath the whole time.
+  const realDt = Math.min(rawDtSec, 0.5);
   lastFrameT = now;
-  if (!G.paused) update(dt); // paused: world freezes but keeps rendering
+  if (!G.paused) update(dt, realDt); // paused: world freezes but keeps rendering
   const resultUp = hud.resultScreen && !hud.resultScreen.classList.contains('hidden');
   const howtoModalUp = hud.howtoScreen && hud.howtoScreen.classList.contains('howtoModal') && !hud.howtoScreen.classList.contains('hidden');
   if ((G.mode === 'menu' && !INTRO.active) || resultUp || howtoModalUp) {
@@ -4980,15 +5044,25 @@ function frame(maxDt = 0.05) {
   }
   composer.render();
 }
+renderer.setAnimationLoop(() => frame());
 // Shader pre-warm: compile every scene material and warm the post-processing
 // passes (bloom + output) once up front, so the first visible frame doesn't
-// hitch while programs compile lazily (18 -> 26). One extra render of the
-// already-built scene — no visual change (it is overwritten by the first
-// animation-loop frame before the browser paints).
-renderer.compile(scene, camera);
-composer.render();
-
-renderer.setAnimationLoop(() => frame());
+// hitch while programs compile lazily (18 -> 26). Deferred via setTimeout so
+// it runs AFTER the animation loop above has already started (and therefore
+// after the boot preloader's first real-time-paced tick, see frame()/
+// update()) instead of blocking it — this compile traverses the whole scene
+// and can itself take a real chunk of time on a loaded scene/slow GPU, and
+// there is no reason to make the preloader (and the canvas's first paint)
+// wait on it: the canvas sits behind the opaque #preloaderScreen for several
+// seconds regardless, so any lazy-compile hitch this pre-warm would have
+// prevented on frame 1 now just happens for free, invisibly, in that same
+// window. It still runs comfortably before the cinematic reveal, so the
+// original goal (no visible hitch once the player can actually see the
+// canvas) is preserved.
+setTimeout(() => {
+  renderer.compile(scene, camera);
+  composer.render();
+}, 0);
 // Fallback: if rAF stalls (embedded/backgrounded preview panels), keep the game
 // stepping via a timer so it never freezes mid-countdown or mid-race.
 // Larger dt cap here so throttled timers still make reasonable progress;
@@ -5066,10 +5140,21 @@ if (DEV_TOOLS) {
   }, 250);
 }
 
+// Guard against no-op resizes. On mobile the address bar showing/hiding fires
+// `resize` with an UNCHANGED width (only the height the bar occupies changes,
+// and often it fires repeatedly with identical dimensions), and every
+// setSize() call here reallocates the renderer's drawing buffer AND the
+// composer's + bloom's render targets — a GPU reallocation that stutters the
+// frame. Bailing when neither dimension actually changed keeps genuine
+// rotations/window resizes working while dropping the spurious churn.
+let lastResizeW = window.innerWidth, lastResizeH = window.innerHeight;
 window.addEventListener('resize', () => {
-  camera.aspect = window.innerWidth / window.innerHeight;
+  const w = window.innerWidth, h = window.innerHeight;
+  if (w === lastResizeW && h === lastResizeH) return;
+  lastResizeW = w; lastResizeH = h;
+  camera.aspect = w / h;
   camera.updateProjectionMatrix();
-  renderer.setSize(window.innerWidth, window.innerHeight);
-  composer.setSize(window.innerWidth, window.innerHeight);
-  bloomPass.setSize(window.innerWidth * BLOOM_RES_SCALE, window.innerHeight * BLOOM_RES_SCALE);
+  renderer.setSize(w, h);
+  composer.setSize(w, h);
+  bloomPass.setSize(w * BLOOM_RES_SCALE, h * BLOOM_RES_SCALE);
 });
