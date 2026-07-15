@@ -141,7 +141,22 @@ const app = document.getElementById('app');
 // on the fill-rate-bound mobile GPUs we care about. Turning it off changes
 // nothing visible (composer MSAA still does the AA) and frees that buffer.
 const renderer = new THREE.WebGLRenderer({ antialias: false, powerPreference: 'high-performance' });
-renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+// Device-pixel-ratio cap. Phones/tablets report DPR 2–3; rendering the whole
+// pipeline (the fill-rate-heavy water shader + the half-float MSAA composer
+// target + bloom) at that ratio is the dominant per-frame GPU cost AND the
+// biggest one-time GPU allocation on mobile — a prime suspect for the slow
+// first-frame stall on iOS Safari (the 3D world appears several seconds late
+// behind the already-interactive UI). Capping mobile to 1.5 shrinks every
+// render target ~44% vs 2.0 (faster to allocate, far less VRAM/bandwidth)
+// while staying crisp on a Retina phone. Desktop is unchanged (min(DPR, 2)).
+// Detection uses coarse-pointer / touch only — NOT viewport width — so a
+// narrow desktop window with a mouse is never downscaled. Reused for the
+// composer + bloom below so all three render targets share the same ratio.
+const IS_MOBILE_GPU = window.matchMedia('(pointer: coarse)').matches
+  || navigator.maxTouchPoints > 0
+  || 'ontouchstart' in window;
+const PIXEL_RATIO = Math.min(window.devicePixelRatio, IS_MOBILE_GPU ? 1.5 : 2);
+renderer.setPixelRatio(PIXEL_RATIO);
 renderer.setSize(window.innerWidth, window.innerHeight);
 renderer.outputColorSpace = THREE.SRGBColorSpace;
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
@@ -162,7 +177,7 @@ const composer = new EffectComposer(
     type: THREE.HalfFloatType,
   })
 );
-composer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+composer.setPixelRatio(PIXEL_RATIO);
 composer.addPass(new RenderPass(scene, camera));
 // Bloom runs at half the CSS resolution: bloom is a wide blur, so its down/
 // upsample mip chain is imperceptible at half res (verified by before/after
