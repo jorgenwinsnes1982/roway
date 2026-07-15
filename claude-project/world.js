@@ -964,9 +964,12 @@ function ensureHerbernLoading() {
 // so it reads as "close to gate 1" without ever sitting in the playable
 // lane. Pushed further left than the original 14 units past the post, per
 // request. x/z are gate 1's own position, passed in from createCourse.
+// y: -1.6, same dip as addLibertyCloseup() below — the auto-fit loader drops
+// the model's underside to y=0 (calm-water level), so without this the base
+// clears the water entirely whenever a wave trough passes under it.
 function addHerbernNearGate1(courseGroup, gate1X, gate1Z, gateW) {
   const anchor = new THREE.Group();
-  anchor.position.set(gate1X - gateW / 2 - 24, 0, gate1Z);
+  anchor.position.set(gate1X - gateW / 2 - 24, -1.6, gate1Z);
   ensureHerbernLoading();
   if (herbernProto) anchor.add(herbernProto.clone(true));
   else herbernPendingAnchors.push(anchor);
@@ -995,17 +998,21 @@ export function createIntroLandmarks(scene) {
   // and pulled closer to the fleet's own path (z 0-148 during the sprint,
   // see INTRO_START_Z in main.js), with an EXTRA scale on top of the shared
   // fit-width — this is the intro's own instance, so bumping it here doesn't
-  // touch the close-up stage-1 size beside gate 1.
+  // touch the close-up stage-1 size beside gate 1. y dipped below the
+  // calm-water line (same trick as addHerbernNearGate1/addLibertyCloseup) —
+  // scaled up 2.5 (1.6 x the base -1.6 dip) to keep the submersion looking
+  // proportional at this instance's larger size.
   const herbernAnchor = new THREE.Group();
-  herbernAnchor.position.set(-95, 0, 55);
+  herbernAnchor.position.set(-95, -2.5, 55);
   herbernAnchor.scale.setScalar(1.6);
   ensureHerbernLoading();
   if (herbernProto) herbernAnchor.add(herbernProto.clone(true));
   else herbernPendingAnchors.push(herbernAnchor);
   group.add(herbernAnchor);
 
+  // same -1.6 dip as addLibertyCloseup()'s stage-4 close-up instance.
   const libertyAnchor = new THREE.Group();
-  libertyAnchor.position.set(60, 0, 45);
+  libertyAnchor.position.set(60, -1.6, 45);
   ensureLibertyLoading();
   if (libertyProto) libertyAnchor.add(libertyProto.clone(true));
   else libertyPendingAnchors.push(libertyAnchor);
@@ -1313,12 +1320,19 @@ export function createCourse(scene, seed = 424242, opts = {}) {
   // waterline (plane height ~2.12 at width 9 — see BANNER_ASPECT in
   // billboard.js) instead of floating clear above it
   const BANNER_Y = 0.75;
-  const flankBanner = (centerX, halfWidth, z, side, emissive, sparkleIntensity, fresnelIntensity) => makeBillboard({
+  // base plate width (billboard.js's own default) — the start pair reads
+  // 25% bigger than this, the finish pair 40% bigger, per request: bigger
+  // at the finish so the sponsor logo is more prominent right at the
+  // celebratory moment, not just a scaled-up version of the entry banner.
+  const BANNER_BASE_WIDTH = 9;
+  const BANNER_WIDTH_START = BANNER_BASE_WIDTH * 1.25;
+  const BANNER_WIDTH_FINISH = BANNER_BASE_WIDTH * 1.4;
+  const flankBanner = (centerX, halfWidth, z, side, emissive, sparkleIntensity, fresnelIntensity, width = BANNER_BASE_WIDTH) => makeBillboard({
     texture: winsenBannerTex,
     timeClock: winsenBannerClock,
     position: { x: centerX + side * (halfWidth + BANNER_CLEARANCE), y: BANNER_Y, z },
     rotationY: -side * BANNER_TOE,
-    width: 9,
+    width,
     emissive,
     sparkleIntensity,
     fresnelIntensity,
@@ -1721,8 +1735,8 @@ export function createCourse(scene, seed = 424242, opts = {}) {
   const hwLeft = Math.max(START_LANE_CLEARANCE, introSafeX + gx - BANNER_CLEARANCE);
   const hwRight = Math.max(START_LANE_CLEARANCE, introSafeX - gx - BANNER_CLEARANCE);
   const entryBanners = [
-    flankBanner(gx, hwLeft, -30, -1, 0.12),
-    flankBanner(gx, hwRight, -30, 1, 0.12),
+    flankBanner(gx, hwLeft, -30, -1, 0.12, undefined, undefined, BANNER_WIDTH_START),
+    flankBanner(gx, hwRight, -30, 1, 0.12, undefined, undefined, BANNER_WIDTH_START),
   ];
   entryBanners.forEach((b) => courseGroup.add(b));
 
@@ -1776,7 +1790,7 @@ export function createCourse(scene, seed = 424242, opts = {}) {
   // logo reads as backlit at the victory moment (main.js bumps bloomPulse
   // on the result-screen firework loop, which pulses these along with
   // everything else — no per-object code needed).
-  const finishBanners = [-1, 1].map((side) => flankBanner(0, GOAL_W / 2, 5, side, 0.4, 0.22, 0.35));
+  const finishBanners = [-1, 1].map((side) => flankBanner(0, GOAL_W / 2, 5, side, 0.4, 0.22, 0.35, BANNER_WIDTH_FINISH));
   finishBanners.forEach((b) => goalGroup.add(b));
 
   goalGroup.position.set(0, 0, -length);

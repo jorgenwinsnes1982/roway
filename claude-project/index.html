@@ -367,6 +367,10 @@
        since it can be opened from the menu where #startScreen would otherwise
        stack on top of it (same auto z-index, later in the DOM) */
     #settingsScreen { z-index: 50; }
+    /* Challenge link modal: opened from the result screen (also a .screen,
+       same auto z-index, later in the DOM) — needs the same boost or it
+       paints underneath instead of over it. */
+    #challengeLinkScreen { z-index: 50; }
     /* How-to-play needs the same boost: opened via #controlsBtn (z-index 20)
        mid-race, over the topbar/touch controls — without an explicit
        z-index here it's z-index:auto (effectively 0) and those z:20
@@ -2115,6 +2119,13 @@
           <span>Sound effects</span>
           <button class="toggle" id="toggleSfx" aria-label="Toggle sound effects"></button>
         </div>
+        <!-- Only unhidden by main.js when a ghost ship (personal-best replay
+             or a challenge duel opponent) actually exists to hide — see
+             hasGhostAvailable() there. -->
+        <div class="settingRow" id="hideGhostRow" style="display:none">
+          <span>Hide ghost ship</span>
+          <button class="toggle" id="toggleHideGhost" aria-label="Toggle hide ghost ship"></button>
+        </div>
         <div class="settingRow">
           <span>Reset voyage progress</span>
           <button class="settingResetBtn" id="resetVoyageBtn">Reset</button>
@@ -2314,6 +2325,26 @@
       <div class="menuBtns">
         <button class="cta" id="challengeGoBtn">Row!</button>
         <button class="ctaGhost" id="challengeNoBtn">No thanks</button>
+      </div>
+    </div>
+
+    <!-- Outgoing challenge link: shown once create-challenge succeeds. A
+         plain modal with the link + an explicit Copy button, rather than
+         relying solely on navigator.share()/clipboard.writeText() — both are
+         gesture-gated APIs, and by the time they'd fire here the triggering
+         click is already stale (an awaited fetch to create-challenge sits in
+         between), which some browsers (notably Safari/iOS) silently refuse.
+         The Copy button below fires its own fresh click, so it isn't affected. -->
+    <div class="screen hidden" id="challengeLinkScreen">
+      <div class="confirmBox" style="position:relative">
+        <button class="modalClose" id="challengeLinkClose" aria-label="Close">✕</button>
+        <div class="confirmTitle">Challenge link</div>
+        <p class="introText" id="challengeLinkDesc" style="margin:0 0 14px">Send this link to a friend — they'll row against your run as a ghost.</p>
+        <div class="settingRow" style="gap:10px">
+          <input type="text" id="challengeLinkInput" readonly aria-label="Challenge link"
+                 style="flex:1; min-width:0; background:rgba(255,255,255,.08); border:1px solid rgba(255,255,255,.25); border-radius:8px; padding:10px 12px; color:#fff; font-size:13px; font-family:inherit;">
+          <button class="settingResetBtn" id="challengeLinkCopyBtn">Copy</button>
+        </div>
       </div>
     </div>
 

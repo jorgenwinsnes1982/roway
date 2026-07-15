@@ -12,6 +12,7 @@ const MUSIC_VOL = 0.32; // background music sits well under the SFX
 const SFX_VOL = 0.5;    // SFX bus level when unmuted
 const FADE_SEC = 2;     // toggles glide over 2s instead of cutting instantly
 let musicBuffer = null, musicLoadStarted = false, musicSource = null;
+let musicLoadFailed = false; // fetch/decode error — see isMusicLoadSettled()
 // looping seagull ambience (public/sounds/sea_seagull.mp3) — audible on the
 // menu/pre-race screens and (quieter) the result screens, silent through
 // countdown+racing. Own gain node so its level is independent of both the
@@ -135,6 +136,12 @@ export function setMusicMuted(m) {
   applyMusicGain();
 }
 export function isMusicMuted() { return musicMuted; }
+// whether the theme song fetch+decode is done, one way or the other — either
+// musicBuffer is ready, or the attempt failed and there's nothing left to
+// wait for. The boot preloader (see stepPreload() in main.js) holds itself
+// open on this so the track is already decoded by the time a gesture can
+// unlock playback, instead of the fade-in kicking in audibly late.
+export function isMusicLoadSettled() { return musicBuffer !== null || musicLoadFailed; }
 export function setMusicDucked(d) {
   musicDucked = d;
   applyMusicGain();
@@ -272,7 +279,7 @@ export function initAudio() {
         musicBuffer = decoded;
         tryStartMusic(); // no-op until the context is actually 'running' (real gesture)
       })
-      .catch(() => { /* no music — game is otherwise unaffected */ });
+      .catch(() => { musicLoadFailed = true; /* no music — game is otherwise unaffected */ });
   }
   // looping seagull ambience — same decode-once/start-once/never-stop
   // approach as the theme above; audibility is purely setSeagullScene()

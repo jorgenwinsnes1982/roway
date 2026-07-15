@@ -7,7 +7,7 @@ import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
 import { createWater, sampleWater, setWaveScale } from './water.js';
 import { buildShip, poseStroke, cyclePose } from './ship.js';
 import { createSky, createFjord, createClouds, createCourse, disposeCourse, updateCourse, createSeagulls, createFogBanks, createIntroLandmarks, COURSE_LENGTH, CHANNEL_HALF } from './world.js';
-import { initAudio, oarSplash, ding, thud, whistle, crowd, kick, hat, bass, whoosh, donk, roVoice, fireworkBoom, setSfxMuted, isSfxMuted, setMusicMuted, isMusicMuted, setMusicDucked, setSeagullScene, hoverSparkle, hornSound } from './audio.js';
+import { initAudio, oarSplash, ding, thud, whistle, crowd, kick, hat, bass, whoosh, donk, roVoice, fireworkBoom, setSfxMuted, isSfxMuted, setMusicMuted, isMusicMuted, setMusicDucked, setSeagullScene, hoverSparkle, hornSound, isMusicLoadSettled } from './audio.js';
 import { createLogoFX, createHowtoFX, createVoyageDoneFX } from './logo.js';
 import { createShieldFX } from './shield.js';
 import {
@@ -350,6 +350,14 @@ function ensureCourseForMode() {
     disposeCourse(scene, course);
     course = createCourse(scene, stage.seed, stage);
     builtStageId = stage.id;
+    // same shader pre-warm as the boot-time one below (renderer.compile),
+    // but for THIS stage's fresh materials — without it, the first frame
+    // that actually needs them (i.e. once the player starts rowing) stalls
+    // compiling lazily instead, which on a slow mobile GPU can read as "the
+    // graphics haven't loaded yet" for a few seconds into the race. Doing it
+    // here means any stall lands during the countdown that follows, not once
+    // the player is already moving.
+    renderer.compile(scene, camera);
     return stage;
   }
   setWaveScale(1.0); // KAPPRO always races the classic sea — leaderboard premise
@@ -358,6 +366,7 @@ function ensureCourseForMode() {
     disposeCourse(scene, course);
     course = createCourse(scene, DAILY_SEED); // bit-identical daily layout — leaderboard premise
     builtStageId = null;
+    renderer.compile(scene, camera); // same pre-warm as the voyage branch above
   }
   return null;
 }
@@ -1276,6 +1285,9 @@ const hud = {
   controlsBtn: $('controlsBtn'), howtoCloseBtn: $('howtoCloseBtn'),
   // Fase 2: challenge links
   challengeBtn: $('challengeBtn'), challengeMsg: $('challengeMsg'),
+  challengeLinkScreen: $('challengeLinkScreen'), challengeLinkClose: $('challengeLinkClose'),
+  challengeLinkInput: $('challengeLinkInput'), challengeLinkCopyBtn: $('challengeLinkCopyBtn'),
+  challengeLinkDesc: $('challengeLinkDesc'),
   duelCard: $('duelCard'), duelResult: $('duelResult'),
   challengeScreen: $('challengeScreen'), challengeTitle: $('challengeTitle'), challengeTimeText: $('challengeTimeText'),
   challengeGoBtn: $('challengeGoBtn'), challengeNoBtn: $('challengeNoBtn'),
@@ -1724,7 +1736,14 @@ function drawPreloadBar(pct, P = PEND_PRELOAD) {
     }
   }
 }
-const PRELOAD = { active: true, t: 0, DURATION: 2.2, EXPLODE_HOLD: 0.7, exploded: false, holdT: 0 };
+// MUSIC_WAIT_CAP: the theme song (~3MB) is fetched+decoded from the moment
+// initAudio() first runs (module boot, see below) — this just gives it a
+// bounded extra beat to finish past the animation's own hold if it hasn't
+// already, so the buffer is ready before the first gesture can unlock
+// playback. Capped so a slow/broken connection can't strand the player on
+// the preloader forever — past this, the game proceeds and music (if it
+// ever arrives) just starts whenever tryStartMusic() next fires.
+const PRELOAD = { active: true, t: 0, DURATION: 2.2, EXPLODE_HOLD: 0.7, exploded: false, holdT: 0, musicWaitT: 0, MUSIC_WAIT_CAP: 6 };
 function stepPreload(dt) {
   if (!PRELOAD.active) return;
   stepPendulumFX(dt, 0, false, PEND_PRELOAD); // no bob driven here — just ages flash/splash
@@ -1741,18 +1760,21 @@ function stepPreload(dt) {
     PRELOAD.holdT += dt;
     drawPreloadBar(1, PEND_PRELOAD);
     if (PRELOAD.holdT >= PRELOAD.EXPLODE_HOLD) {
+      // hold a little longer if the theme song hasn't finished decoding yet
+      // (fetching since module boot — see the initAudio() call at the top of
+      // the file) — otherwise the first tap/gesture can unlock audio before
+      // the buffer exists, and the track only starts once decode eventually
+      // finishes, audibly late into the intro/menu. Browsers still require a
+      // real gesture before anything can be heard (see kickAudio below,
+      // which unlocks/resumes the audio context) — this just makes sure the
+      // buffer itself is ready by then, it can't remove the gesture
+      // requirement itself.
+      if (!isMusicLoadSettled() && PRELOAD.musicWaitT < PRELOAD.MUSIC_WAIT_CAP) {
+        PRELOAD.musicWaitT += dt;
+        return;
+      }
       PRELOAD.active = false;
       if (hud.preloaderScreen) hud.preloaderScreen.classList.add('hidden');
-      // Kick the music (and other samples) loading right away, not gated on a
-      // user gesture — decoding a ~100s mp3 takes a beat, so starting it here
-      // instead of waiting for the player's first tap means it's usually
-      // already decoded and playing (just silent) by the time that tap
-      // actually arrives to unlock audible sound. Browsers still require a
-      // real gesture before anything can be heard (see kickAudio below,
-      // which unlocks/resumes this same context) — this call just removes
-      // the DECODE latency from that critical path, it can't remove the
-      // gesture requirement itself.
-      initAudio();
     }
   }
 }
@@ -2957,20 +2979,38 @@ async function shareChallenge(msgEl, btnEl) {
     msgEl.textContent = 'Could not create the link — try again';
     return;
   }
-  // the link itself is created — sharing/copying it is best-effort from here,
-  // never shown as an error (a cancelled share sheet isn't a failure)
-  try {
-    if (navigator.share) {
-      await navigator.share({ title: 'ROWAY — Row the Trophy Home', text: shareCopyText(), url });
-      msgEl.classList.add('hiddenMsg');
-    } else {
-      await navigator.clipboard.writeText(url);
-      msgEl.textContent = 'Link copied!';
-    }
-  } catch {
-    msgEl.textContent = url; // let them select/copy it manually
-  }
+  msgEl.classList.add('hiddenMsg');
+  openChallengeLinkModal(url);
 }
+// Shown once create-challenge succeeds, instead of firing
+// navigator.share()/navigator.clipboard.writeText() straight from here: both
+// are gesture-gated APIs, and by this point the triggering click is already
+// stale (the awaited fetch above sits in between) — some browsers, notably
+// Safari/iOS, silently refuse the call once that gesture has gone stale,
+// which read as "the link doesn't work" even though it was created fine.
+// The modal's own Copy button below fires its own fresh click, so it isn't
+// affected the same way.
+function openChallengeLinkModal(url) {
+  hud.challengeLinkDesc.textContent = shareCopyText();
+  hud.challengeLinkInput.value = url;
+  hud.challengeLinkCopyBtn.textContent = 'Copy';
+  hud.challengeLinkScreen.classList.remove('hidden');
+}
+function closeChallengeLinkModal() {
+  hud.challengeLinkScreen.classList.add('hidden');
+}
+hud.challengeLinkClose.addEventListener('click', (e) => { e.currentTarget.blur(); closeChallengeLinkModal(); });
+hud.challengeLinkCopyBtn.addEventListener('click', async (e) => {
+  e.currentTarget.blur();
+  try {
+    await navigator.clipboard.writeText(hud.challengeLinkInput.value);
+    hud.challengeLinkCopyBtn.textContent = 'Copied!';
+  } catch {
+    // clipboard permission denied/unavailable — the link is still right
+    // there, selected, ready for a manual copy
+    hud.challengeLinkInput.select();
+  }
+});
 // share body text: branches on game mode + completion state, but every
 // branch still feeds the same URL-creation/clipboard-fallback/error-handling
 // flow above unchanged. G.lastRun is guaranteed set here (shareChallenge()
@@ -3075,9 +3115,10 @@ $('confirmNo').addEventListener('click', (e) => {
 });
 
 // ---- settings modal: music / SFX toggles (persisted) ----
-const MUSIC_KEY = 'roway.music', SFX_KEY = 'roway.sfx';
+const MUSIC_KEY = 'roway.music', SFX_KEY = 'roway.sfx', HIDE_GHOST_KEY = 'roway.hideGhost';
 const settingsBtn = $('settingsBtn'), settingsScreen = $('settingsScreen'), settingsClose = $('settingsClose');
 const toggleMusic = $('toggleMusic'), toggleSfx = $('toggleSfx');
+const hideGhostRow = $('hideGhostRow'), toggleHideGhost = $('toggleHideGhost');
 function applyMusic(on) {
   setMusicMuted(!on);
   toggleMusic.classList.toggle('on', on);
@@ -3091,9 +3132,22 @@ function applySfx(on) {
 // default ON unless the player explicitly turned it off before
 applyMusic(localStorage.getItem(MUSIC_KEY) !== '0');
 applySfx(localStorage.getItem(SFX_KEY) !== '0');
+
+// hide-ghost-ship (Settings): the row itself only shows up when a ghost
+// actually exists to hide — a personal-best recording (GHOST_KEY) or an
+// active challenge duel (C.active) — checked fresh every time Settings
+// opens, not cached, since either can appear/disappear between visits.
+let hideGhostPref = localStorage.getItem(HIDE_GHOST_KEY) === '1';
+function hasGhostAvailable() {
+  let data;
+  try { data = JSON.parse(localStorage.getItem(GHOST_KEY)); } catch { data = null; }
+  return (Array.isArray(data) && data.length > 1) || C.active;
+}
+toggleHideGhost.classList.toggle('on', hideGhostPref);
 settingsBtn.addEventListener('click', () => {
   settingsBtn.blur();
   if (G.mode === 'racing' || G.mode === 'countdown') { G.paused = true; releaseStroke(); }
+  hideGhostRow.style.display = hasGhostAvailable() ? 'flex' : 'none';
   settingsScreen.classList.remove('hidden');
 });
 function closeSettings() {
@@ -3114,6 +3168,20 @@ $('aboutCloseBtn').addEventListener('click', (e) => {
 });
 toggleMusic.addEventListener('click', (e) => { e.currentTarget.blur(); applyMusic(isMusicMuted()); });
 toggleSfx.addEventListener('click', (e) => { e.currentTarget.blur(); applySfx(isSfxMuted()); });
+// turning ON hides whichever ghost is currently up right away; turning OFF
+// just persists the preference — the ghost (if any) reappears on the next
+// race start (startRace() reads hideGhostPref there), rather than trying to
+// re-derive which of GH/C should currently be visible here too.
+toggleHideGhost.addEventListener('click', (e) => {
+  e.currentTarget.blur();
+  hideGhostPref = !hideGhostPref;
+  localStorage.setItem(HIDE_GHOST_KEY, hideGhostPref ? '1' : '0');
+  toggleHideGhost.classList.toggle('on', hideGhostPref);
+  if (hideGhostPref) {
+    if (GH.ship) GH.ship.visible = false;
+    if (C.ship) C.ship.visible = false;
+  }
+});
 
 // dev tools row: only ever shown when DEV_TOOLS is already on (see the
 // online-unlock block up top), so its one job is turning it back off —
@@ -3357,6 +3425,12 @@ function startRace(quick) {
     if (GH.ship) GH.ship.visible = false; // two hologram boats at once reads as clutter — local ghost yields to the duel
   } else if (C.ship) {
     C.ship.visible = false;
+  }
+  // Settings "Hide ghost ship" — a final override on top of the precedence
+  // above, never changes WHICH ghost would be shown, only whether either is.
+  if (hideGhostPref) {
+    if (GH.ship) GH.ship.visible = false;
+    if (C.ship) C.ship.visible = false;
   }
   clearFireworks();
   R.pace = 11.0 + Math.random() * 0.6; // beatable with steady rhythm + turbo footballs
@@ -3674,6 +3748,7 @@ function finishRace() {
     hud.repeatStageBtn.style.display = 'none';
     hud.nextStageBtn.style.display = 'none';
     hud.challengeMsg.classList.add('hiddenMsg');
+    hud.challengeLinkScreen.classList.add('hidden');
     // Row Race: claiming your place is the only path off this screen now —
     // no side-door back to the menu before that (voyage-stage result below
     // keeps it, since a voyage run never gates progress behind a name claim)
@@ -3771,6 +3846,7 @@ function finishRace() {
     // track has a different length and wouldn't line up, so no sharing here
     hud.challengeBtn.style.display = 'none';
     hud.challengeMsg.classList.add('hiddenMsg');
+    hud.challengeLinkScreen.classList.add('hidden');
     G.resultStage = 2; // nothing to save — Space/R can restart right away
     // Fase 3e: nextStageBtn/Space route through the stage bridge only when a
     // crossing happened (see continueFromResult()) — this is the ONLY place
@@ -4861,9 +4937,33 @@ function update(dt) {
 // motion (water, gulls, idle oar-stroke), so there is no need to redraw the
 // full scene + bloom at display refresh. The world keeps updating every tick
 // (cheap) — only the heavy composer render is throttled. The wordmark/shield
-// shine runs on its own canvas/renderer, so it stays perfectly smooth. Only
-// the plain menu is capped: the intro cinematic, countdown, race and result
-// (fireworks) all render every frame.
+// shine runs on its own canvas/renderer, so it stays perfectly smooth. The
+// intro cinematic, countdown and race all still render every frame.
+//
+// #resultScreen gets the same cap once it's actually up (not during the
+// pre-reveal glide/camera settle). Measured: with the full-res scene +
+// UnrealBloom rendering uncoupled every frame behind the result HTML, each
+// composer.render() burst (RenderPass + bloom's blur chain + OutputPass,
+// ~16 sub-draws) cost ~1.8ms avg / ~5.5ms p95 of main-thread JS/GL-submit
+// time — time stolen from the exact same thread that has to rasterize the
+// .raster-btn:hover CSS transition (filter/transform), which is what read
+// as "trege" (sluggish) hovering. The fireworks keep bursting and their
+// particle sim still integrates every tick (cheap, dt-based) — only the
+// redraw cadence drops, same trick as the menu cap above.
+//
+// #howtoScreen gets it too, but ONLY while presented as the controls-icon
+// MODAL (.howtoModal class, opened via openControlsHelp() — reachable any
+// time, including mid-race). The plain pre-race flow (showHowto(), no
+// .howtoModal class) is already covered by the G.mode==='menu' branch above
+// and doesn't need this. The modal case is the one that was missing: opening
+// it mid-race sets G.paused = true but leaves G.mode as 'racing'/'countdown'
+// (see openControlsHelp()), so without this check it fell through to the
+// same every-frame composer.render() the live race uses — i.e. the full
+// scene + bloom rendering at native refresh rate behind a totally static,
+// paused backdrop, for as long as the modal stayed open. Gate on the class
+// AND !hidden so closing the modal (howtoCloseBtn hides it synchronously,
+// see the delayed .howtoModal removal there) restores full-rate rendering
+// immediately, not 500ms later when the class itself is stripped.
 const MENU_RENDER_INTERVAL = 1 / 30; // seconds
 let menuRenderAcc = 0;
 function frame(maxDt = 0.05) {
@@ -4871,7 +4971,9 @@ function frame(maxDt = 0.05) {
   const dt = Math.min((now - lastFrameT) / 1000, maxDt);
   lastFrameT = now;
   if (!G.paused) update(dt); // paused: world freezes but keeps rendering
-  if (G.mode === 'menu' && !INTRO.active) {
+  const resultUp = hud.resultScreen && !hud.resultScreen.classList.contains('hidden');
+  const howtoModalUp = hud.howtoScreen && hud.howtoScreen.classList.contains('howtoModal') && !hud.howtoScreen.classList.contains('hidden');
+  if ((G.mode === 'menu' && !INTRO.active) || resultUp || howtoModalUp) {
     menuRenderAcc += dt;
     if (menuRenderAcc < MENU_RENDER_INTERVAL) return; // skip this frame's heavy render
     menuRenderAcc = 0;
@@ -4905,7 +5007,7 @@ setInterval(() => {
 // works under `npm run dev`.
 if (DEV_TOOLS) {
   window.__game = {
-    G, R, T, GH, C, INTRO, logoFX, shieldFX, renderer, ship, rival, spawnFireworkBurst,
+    G, R, T, GH, C, INTRO, logoFX, shieldFX, howtoFX, renderer, composer, ship, rival, spawnFireworkBurst,
     dailySeed: DAILY_SEED, get waterT() { return waterT; },
     get voyage() { return voyage; }, set voyage(v) { voyage = v; }, shipData,
     LETTER, loadMissions, loadLetters,
