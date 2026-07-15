@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1448 1086" width="1448" height="1086">
+  <defs><filter id="goldGlow"><feGaussianBlur stdDeviation="3" result="blur"/><feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge></filter></defs>
+  <line id="progress-base" x1="300" y1="825" x2="1130" y2="825" stroke="#7A5927" stroke-width="6" stroke-linecap="round" opacity="0.8"/>
+  <line id="progress-active" x1="300" y1="825" x2="1130" y2="825" stroke="#FFD36A" stroke-width="5" stroke-linecap="round" filter="url(#goldGlow)"/>
+  <circle id="checkpoint-usa" cx="300" cy="825" r="32" fill="#10283A" stroke="#D6A145" stroke-width="5"/>
+  <circle id="checkpoint-island" cx="718" cy="825" r="34" fill="#10283A" stroke="#D6A145" stroke-width="5"/>
+  <circle id="checkpoint-norway" cx="1130" cy="825" r="32" fill="#10283A" stroke="#D6A145" stroke-width="5"/>
+</svg>

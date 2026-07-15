@@ -4,8 +4,14 @@
     {
       "name": "viking-game",
       "runtimeExecutable": "npx",
-      "runtimeArgs": ["vite", "--port", "5178", "--strictPort"],
+      "runtimeArgs": ["vite", "--port", "5178", "--strictPort", "--host"],
       "port": 5178
+    },
+    {
+      "name": "viking-fresh",
+      "runtimeExecutable": "npx",
+      "runtimeArgs": ["vite", "--port", "5189", "--strictPort", "--host"],
+      "port": 5189
     }
   ]
 }

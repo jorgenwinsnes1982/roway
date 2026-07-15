@@ -9,6 +9,19 @@ export const WAVES = [
   [0.2, 1.0, 0.09, 6.5, 4.6],
 ];
 
+// Per-stage sea state (voyage stages get rougher toward America). ONE source
+// of truth for BOTH sides: this module variable scales sampleWater() below,
+// and setWaveScale() pushes the exact same value into the uWaveScale uniform
+// the vertex shader multiplies its amplitudes by (Regel 6/8: the WAVES
+// numbers themselves are never touched — only this shared multiplier).
+// KAPPRO always runs 1.0 (see ensureCourseForMode in main.js).
+let waveScale = 1.0;
+let _waveScaleUniform = null; // wired up in createWater()
+export function setWaveScale(s) {
+  waveScale = s;
+  if (_waveScaleUniform) _waveScaleUniform.value = s;
+}
+
 // CPU-side wave height + normal-ish slope sampling (matches vertex shader)
 export function sampleWater(x, z, t) {
   let y = 0, dx = 0, dz = 0;
@@ -18,8 +31,8 @@ export function sampleWater(x, z, t) {
     const il = 1 / Math.hypot(wx, wz);
     const dxn = wx * il, dzn = wz * il;
     const phase = (x * dxn + z * dzn) * k + t * spd;
-    y += amp * Math.sin(phase);
-    const d = amp * k * Math.cos(phase);
+    y += amp * waveScale * Math.sin(phase);
+    const d = amp * waveScale * k * Math.cos(phase);
     dx += dxn * d;
     dz += dzn * d;
   }
@@ -28,6 +41,7 @@ export function sampleWater(x, z, t) {
 
 const vertexShader = /* glsl */ `
   uniform float uTime;
+  uniform float uWaveScale; // per-stage sea state — same value sampleWater() uses
   varying vec3 vWorldPos;
   varying float vWaveH;
   varying vec3 vNormal;
@@ -45,7 +59,7 @@ const vertexShader = /* glsl */ `
       vec2 dir = normalize(uWaveA[i].xy);
       float k = 6.28318 / uWaveA[i].w;
       float phase = dot(wp.xz, dir) * k + uTime * uWaveSpd[i];
-      float amp = uWaveA[i].z;
+      float amp = uWaveA[i].z * uWaveScale;
       y += amp * sin(phase);
       float d = amp * k * cos(phase);
       ddx += dir.x * d;
@@ -65,9 +79,12 @@ const fragmentShader = /* glsl */ `
   uniform vec3 uDeepColor;
   uniform vec3 uShallowColor;
   uniform vec3 uSkyColor;
+  uniform vec3 uWarmColor;
   uniform vec3 uFogColor;
   uniform float uFogNear;
   uniform float uFogFar;
+  uniform vec4 uShipA; // player hull: x, z, heading, speed — drives hull wash
+  uniform vec4 uShipB; // rival hull: same layout
   varying vec3 vWorldPos;
   varying float vWaveH;
   varying vec3 vNormal;
@@ -81,6 +98,65 @@ const fragmentShader = /* glsl */ `
     f = f * f * (3.0 - 2.0 * f);
     return mix(mix(hash(i), hash(i + vec2(1, 0)), f.x),
                mix(hash(i + vec2(0, 1)), hash(i + vec2(1, 1)), f.x), f.y);
+  }
+
+  // Hull wash: foam rim hugging the ACTUAL hull outline + bow V-arms +
+  // trailing wake for one ship, computed in the hull's local frame (ship
+  // forward is (sin h, -cos h), matching main.js's movement integration) and
+  // scaled by its speed. The rim follows a viking-hull beam profile (pointed
+  // bow/stern, widest midship) instead of a box band, and the foam is
+  // ANIMATED: its noise is advected sternward in hull space so the churn
+  // visibly streams along the planks, faster the faster the ship rows. This
+  // is a purely ADDITIVE foam term layered on top of the existing waves —
+  // the core WAVES definition stays untouched on both GPU and CPU (Regel 6).
+  float hullWash(vec4 ship, vec2 p, float t) {
+    vec2 d = p - ship.xy;
+    if (dot(d, d) > 4900.0) return 0.0; // everything lives within ~70 m
+    float c = cos(ship.z), s = sin(ship.z);
+    float along = d.x * s - d.y * c;  // + toward the bow
+    float across = d.x * c + d.y * s; // + to starboard
+    float k = clamp(ship.w / 18.0, 0.0, 1.0);
+
+    // viking beam profile: half-width at this station — 0 at the pointed
+    // stem/stern (|along| = 15.5), widest (2.55) midship
+    float HL = 15.5;
+    float u = clamp(along / HL, -1.0, 1.0);
+    float hullW = 2.55 * pow(max(0.0, 1.0 - u * u), 0.62);
+    float edge = abs(across) - hullW; // metres outside the hull's edge here
+
+    // animated churn: two noise octaves advected sternward in HULL space —
+    // the pattern streams backward along the hull, crawling slowly at rest
+    // and rushing at sprint speed; ship.xy offsets decorrelate the two ships
+    float flow = t * (1.5 + 6.0 * k);
+    float n1 = noise(vec2(along * 0.9 + flow, across * 1.6 + ship.x));
+    float n2 = noise(vec2(along * 2.2 + flow * 1.7, across * 3.1 - ship.y));
+    float lap = 0.35 + 0.65 * (0.6 * n1 + 0.4 * n2);
+
+    // foam rim hugging the outline — thickness breathes with the noise so
+    // the waterline visibly laps against the planks even at rest
+    float rimW = (0.55 + 0.9 * k) * (0.75 + 0.5 * n1);
+    float rim = smoothstep(rimW, 0.0, abs(edge))
+              * smoothstep(HL + 1.0, HL - 2.0, abs(along))
+              * (0.30 + 0.55 * k);
+
+    // bow V-arms: two foam lines diverging from the stem (only under way)
+    float bx = HL - along; // metres behind the bow point
+    float armC = abs(across) - (0.4 + bx * (0.38 + 0.22 * k));
+    float bowArms = smoothstep(1.1, 0.15, abs(armC))
+                  * smoothstep(6.0 + 8.0 * k, 0.0, bx) * step(0.0, bx) * k;
+    // white water right at the stem itself
+    float stem = smoothstep(2.0 + k * 1.2, 0.4, length(vec2(across, along - HL)))
+               * (0.10 + 0.90 * k);
+
+    // wake: a widening foam wedge trailing the pointed stern
+    float back = -along - HL + 1.0;
+    float wakeLen = 12.0 + 46.0 * k;
+    float halfW = 1.4 + back * 0.30;
+    float wake = smoothstep(halfW, halfW * 0.4, abs(across))
+               * smoothstep(0.0, 4.0, back)
+               * max(0.0, 1.0 - back / wakeLen) * k;
+
+    return clamp(rim + bowArms + stem + wake, 0.0, 1.0) * lap;
   }
 
   void main() {
@@ -99,33 +175,55 @@ const fragmentShader = /* glsl */ `
     float detail = 1.0 - smoothstep(60.0, 420.0, distance(cameraPosition, vWorldPos));
     N = normalize(N + vec3(mg.x, 0.0, mg.y) * 0.42 * detail);
 
-    // base color: deep -> shallow by wave height
-    float hMix = smoothstep(-0.8, 1.0, vWaveH);
-    vec3 col = mix(uDeepColor, uShallowColor, hMix);
+    // ---- water body: deep turquoise-black -> greenish shallows ----
+    float hMix = smoothstep(-0.9, 1.1, vWaveH);
+    vec3 body = mix(uDeepColor, uShallowColor, hMix);
 
-    // fresnel reflection of the sky
-    float fres = pow(1.0 - max(dot(N, V), 0.0), 3.0);
-    col = mix(col, uSkyColor, fres * 0.75);
-
-    // subsurface glow: sunlight shining through wave crests toward the viewer
+    // subsurface glow: sunlight through the crests toward the viewer
     float sss = pow(max(dot(V, -L), 0.0), 3.5) * smoothstep(0.1, 1.1, vWaveH);
-    col += vec3(0.05, 0.42, 0.38) * sss * 0.85;
+    body += vec3(0.04, 0.40, 0.34) * sss * 0.9;
 
-    // sun specular — tight glitter that the bloom pass picks up
+    // directional wind streaks drifting down the fjord (stretched along z)
+    float streak = noise(vec2(vWorldPos.x * 1.1, vWorldPos.z * 0.05 - uTime * 0.18));
+    streak = streak * 0.5 + 0.5 * noise(vec2(vWorldPos.x * 2.3 + 7.0, vWorldPos.z * 0.09 - uTime * 0.11));
+    body *= 0.94 + streak * 0.10;
+
+    // ---- Schlick fresnel with view-dependent reflection colour ----
+    float cosT = max(dot(N, V), 0.0);
+    float F = 0.02 + 0.98 * pow(1.0 - cosT, 5.0);
+    vec3 R = reflect(-V, N);
+    float ry = clamp(R.y, 0.0, 1.0);
+    // warm glow only where the reflected ray actually points AT the sun —
+    // a tight 3D lobe gives the classic glitter corridor, not an orange sea
+    float sunLobe = pow(max(dot(normalize(R), L), 0.0), 24.0);
+    vec3 horizonCol = mix(uFogColor, uWarmColor, sunLobe * 0.85);
+    vec3 reflCol = mix(horizonCol, uSkyColor, pow(ry, 0.65));
+    vec3 col = mix(body, reflCol, clamp(F, 0.0, 0.6));
+
+    // ---- foam: crest height AND geometric slope, broken up by noise ----
+    float slope = 1.0 - normalize(vNormal).y;
+    float foamN = noise(vWorldPos.xz * 1.4 + uTime * 0.35);
+    float foam = smoothstep(0.030, 0.085, slope) * smoothstep(0.30, 0.95, vWaveH);
+    foam *= 0.45 + 0.55 * foamN;
+    foam = min(foam, 1.0);
+    col = mix(col, vec3(0.90, 0.95, 0.99), foam * 0.7);
+
+    // ---- hull wash: bow wave / side lapping / wake for both ships ----
+    float wash = hullWash(uShipA, vWorldPos.xz, uTime) + hullWash(uShipB, vWorldPos.xz, uTime);
+    col = mix(col, vec3(0.90, 0.95, 0.99), clamp(wash, 0.0, 1.0) * 0.62);
+
+    // ---- sun glitter, noise-modulated so it breaks into individual sparks ----
     vec3 H = normalize(L + V);
     float spec = pow(max(dot(N, H), 0.0), 300.0) * 1.5;
-    spec += pow(max(dot(N, H), 0.0), 70.0) * 0.12;
-    col += vec3(1.0, 0.95, 0.8) * spec;
+    spec += pow(max(dot(N, H), 0.0), 70.0) * 0.10;
+    float sparkMask = noise(vWorldPos.xz * 3.4 + uTime * 1.1);
+    spec *= 0.35 + 1.65 * smoothstep(0.55, 0.95, sparkMask);
+    col += vec3(1.0, 0.93, 0.78) * spec;
 
     // moving micro-sparkle (subtle)
     float sp = noise(vWorldPos.xz * 1.6 + uTime * 0.7);
-    sp = smoothstep(0.93, 1.0, sp) * 0.22;
+    sp = smoothstep(0.94, 1.0, sp) * 0.18;
     col += vec3(sp);
-
-    // foam on crests (soft)
-    float foamN = noise(vWorldPos.xz * 0.9 + uTime * 0.3);
-    float foam = smoothstep(0.75, 1.15, vWaveH * 0.9 + foamN * 0.4 - 0.2);
-    col = mix(col, vec3(0.92, 0.96, 1.0), foam * 0.4);
 
     // distance fog
     float dist = distance(cameraPosition, vWorldPos);
@@ -143,15 +241,22 @@ export function createWater({ sunDir, fogColor, fogNear, fogFar }) {
   const uniforms = {
     uTime: { value: 0 },
     uSunDir: { value: sunDir.clone() },
-    uDeepColor: { value: new THREE.Color(0x021c3d) },
-    uShallowColor: { value: new THREE.Color(0x14577a) },
+    uDeepColor: { value: new THREE.Color(0x03151e) },   // turquoise-black depths
+    uShallowColor: { value: new THREE.Color(0x14584e) }, // greenish shallows
     uSkyColor: { value: new THREE.Color(0x7fa3d0) },
+    uWarmColor: { value: new THREE.Color(0xff9e52) },    // blue-hour horizon glow
     uFogColor: { value: new THREE.Color(fogColor) },
     uFogNear: { value: fogNear },
     uFogFar: { value: fogFar },
     uWaveA: { value: WAVES.map((w) => new THREE.Vector4(w[0], w[1], w[2], w[3])) },
     uWaveSpd: { value: WAVES.map((w) => w[4]) },
+    uWaveScale: { value: waveScale },
+    // hull-wash inputs (x, z, heading, speed per ship) — parked far away
+    // until the first setShips() so no phantom wash renders at the origin
+    uShipA: { value: new THREE.Vector4(1e6, 1e6, 0, 0) },
+    uShipB: { value: new THREE.Vector4(1e6, 1e6, 0, 0) },
   };
+  _waveScaleUniform = uniforms.uWaveScale; // setWaveScale() drives GPU+CPU from here on
 
   const mat = new THREE.ShaderMaterial({ vertexShader, fragmentShader, uniforms });
   const mesh = new THREE.Mesh(geo, mat);
@@ -163,6 +268,24 @@ export function createWater({ sunDir, fogColor, fogNear, fogFar }) {
       uniforms.uTime.value = t;
       // keep the water plane centered under the ship along the course
       mesh.position.z = shipZ;
+    },
+    // hull-wash driver — called once per frame from main.js with both ships'
+    // live position/heading/speed so the wash follows them in every mode
+    // (menu idle, cinematic intro, race and result screens alike)
+    setShips(ax, az, ah, av, bx, bz, bh, bv) {
+      uniforms.uShipA.value.set(ax, az, ah, av);
+      uniforms.uShipB.value.set(bx, bz, bh, bv);
+    },
+    // stage-mood palette hook — main.js lerps these Color objects directly
+    // for the ~1s stage crossfade, so expose the live uniform values rather
+    // than a set-once API. Core WAVES stay untouched (Regel 6) — this is
+    // colour only, never geometry.
+    tone: {
+      deep: uniforms.uDeepColor.value,
+      shallow: uniforms.uShallowColor.value,
+      sky: uniforms.uSkyColor.value,
+      warm: uniforms.uWarmColor.value,
+      fog: uniforms.uFogColor.value,
     },
   };
 }

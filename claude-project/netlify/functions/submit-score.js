@@ -25,6 +25,10 @@ const RATE_MAX = 5;                    // submissions per IP...
 const RATE_WINDOW_MS = 60 * 1000;      // ...per minute
 const COURSE_BALLS = 26;               // world.js createCourse: 26 footballs
 const COURSE_GATES = 9;                // world.js createCourse: 9 gates
+// Portstraff: MUST stay identical to GATE_MISS_PENALTY_S in src/main.js. The
+// client sends the RAW (unpenalized) time — this is the ONLY place the
+// penalty is authoritatively applied; the client can't lie about it.
+const GATE_MISS_PENALTY_S = 3.0;
 
 export default async (req, context) => {
   if (req.method !== 'POST') return json(405, { error: 'method' });
@@ -58,36 +62,80 @@ export default async (req, context) => {
   if (!sig || !timingSafeEqualHex(String(sig), expected)) return json(403, { error: 'bad-sig' });
 
   // --- plausibility bounds (reject impossible runs) ---
-  const time = Number(data.time);
+  const time = Number(data.time); // RAW time, penalty not yet applied — see below
   const balls = Number(data.balls);
   const perfect = Number(data.perfect);
   const gates = Number(data.gates);
   const win = !!data.win;
+  // Portstraff: missedGates must be present and sane — the client can't lie
+  // about it (it's part of the signed payload), but a well-formed-but-wrong
+  // value (e.g. more misses than gates exist) is still rejected here.
+  const missedGatesProvided = data.missedGates !== undefined && data.missedGates !== null;
+  const missedGates = Number(data.missedGates);
   const implausible =
     !Number.isFinite(time) || time < 45 || time > 1800 ||       // 1500 m course; ~51 s theoretical floor
     !Number.isInteger(balls) || balls < 0 || balls > COURSE_BALLS ||
     !Number.isInteger(gates) || gates < 0 || gates > COURSE_GATES ||
-    !Number.isInteger(perfect) || perfect < 0 || perfect > Math.floor(time); // ~1 stroke/s max
+    !Number.isInteger(perfect) || perfect < 0 || perfect > Math.floor(time) || // ~1 stroke/s max
+    !missedGatesProvided || !Number.isInteger(missedGates) || missedGates < 0 ||
+    gates + missedGates > COURSE_GATES;
   if (implausible) return json(400, { error: 'implausible' });
 
   // consume the nonce (single use) only once everything else has passed
   nrec.used = true;
   await nonces.setJSON(nonce, nrec);
 
+  // Portstraff: the server owns the penalty math — `time` recomputed here is
+  // what actually lands in computeScore() and on the leaderboard, regardless
+  // of anything the client believes about its own penalty.
+  const penaltyS = missedGates * GATE_MISS_PENALTY_S;
+  const finalTime = time + penaltyS;
+
   // --- server-side score recompute — identical formula to computeScore() in main.js ---
-  const score = computeScore({ time, balls, perfect, gates, win });
+  const score = computeScore({ time: finalTime, balls, perfect, gates, win });
 
-  const name = String(data.name ?? '').trim().slice(0, 14).replace(/[<>&"']/g, '') || 'Ukjent viking';
-  const entry = { id: randomUUID(), name, score, time: +time.toFixed(2), win, at: now };
+  const name = String(data.name ?? '').trim().slice(0, 14).replace(/[<>&"']/g, '') || 'Unknown viking';
+  const entry = { id: randomUUID(), name, score, time: +finalTime.toFixed(2), win, at: now };
 
+  // all-time board — rank computed against the FULL sorted list (not the
+  // top-100 slice that's actually stored) so it stays exact past rank 100,
+  // instead of collapsing to a meaningless "not found" beyond the cap.
   const list = (await board.get('list', { type: 'json' })) || [];
   list.push(entry);
   list.sort((a, b) => b.score - a.score);
+  const rankAll = list.findIndex((e) => e.id === entry.id) + 1;
   const trimmed = list.slice(0, 100);
   await board.setJSON('list', trimmed);
 
-  return json(200, { ok: true, id: entry.id, scores: trimmed.slice(0, 20) });
+  // daily-challenge board: same entry into today's bucket (key `day:<day>`).
+  const day = resolveDay(data.day, now);
+  let dayScores = [];
+  let rankDay = null;
+  if (day) {
+    const dlist = (await board.get(`day:${day}`, { type: 'json' })) || [];
+    dlist.push(entry);
+    dlist.sort((a, b) => b.score - a.score);
+    rankDay = dlist.findIndex((e) => e.id === entry.id) + 1;
+    const dtrim = dlist.slice(0, 100);
+    await board.setJSON(`day:${day}`, dtrim);
+    dayScores = dtrim.slice(0, 20);
+  }
+
+  // `entry` is returned too — so the client can render "your row" without
+  // re-deriving the server's own score/penalty math a second time.
+  return json(200, { ok: true, id: entry.id, entry, scores: trimmed.slice(0, 20), rankAll, dayScores, rankDay, day });
 };
+
+// accept the client-reported day only if well-formed AND within ±1 day of the
+// server's date (timezone tolerance); otherwise skip the daily board.
+function resolveDay(d, now) {
+  if (!d || !/^\d{4}-\d{2}-\d{2}$/.test(d)) return null;
+  const s = new Date(now);
+  const serverUTC = Date.UTC(s.getUTCFullYear(), s.getUTCMonth(), s.getUTCDate());
+  const [y, m, day] = d.split('-').map(Number);
+  const clientUTC = Date.UTC(y, m - 1, day);
+  return Math.abs(serverUTC - clientUTC) <= 86400000 ? d : null;
+}
 
 // MUST stay identical to computeScore() in src/main.js
 function computeScore({ time, balls, perfect, gates, win }) {
@@ -104,6 +152,7 @@ function canonicalMsg(d) {
     String(d.perfect | 0),
     String(d.gates | 0),
     d.win ? '1' : '0',
+    String(d.missedGates | 0), // Portstraff
   ].join('|');
 }
 

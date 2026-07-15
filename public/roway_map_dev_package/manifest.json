@@ -1,0 +1,79 @@
+{
+  "canvas": {
+    "width": 1448,
+    "height": 1086,
+    "ratio": "4:3"
+  },
+  "background": "assets/background/map_background_clean_1448x1086.png",
+  "overlay_exact": "assets/overlays/all_ui_elements_exact_1448x1086.png",
+  "sprites": {
+    "metlife_stadium": {
+      "file": "assets/sprites/metlife_stadium.png",
+      "x": 10,
+      "y": 410,
+      "width": 250,
+      "height": 165
+    },
+    "usa_destination_badge": {
+      "file": "assets/sprites/usa_destination_badge.png",
+      "x": 240,
+      "y": 305,
+      "width": 190,
+      "height": 305
+    },
+    "island_greenland_badge": {
+      "file": "assets/sprites/island_greenland_badge.png",
+      "x": 600,
+      "y": 310,
+      "width": 250,
+      "height": 310
+    },
+    "norway_destination_badge": {
+      "file": "assets/sprites/norway_destination_badge.png",
+      "x": 1090,
+      "y": 310,
+      "width": 280,
+      "height": 310
+    },
+    "route_buoy_left": {
+      "file": "assets/sprites/route_buoy_left.png",
+      "x": 430,
+      "y": 455,
+      "width": 85,
+      "height": 80
+    },
+    "route_buoy_right": {
+      "file": "assets/sprites/route_buoy_right.png",
+      "x": 935,
+      "y": 465,
+      "width": 95,
+      "height": 85
+    },
+    "rowing_boat": {
+      "file": "assets/sprites/rowing_boat.png",
+      "x": 815,
+      "y": 590,
+      "width": 200,
+      "height": 180
+    },
+    "bottom_progress_bar": {
+      "file": "assets/sprites/bottom_progress_bar.png",
+      "x": 270,
+      "y": 790,
+      "width": 895,
+      "height": 95
+    },
+    "footer_status_text": {
+      "file": "assets/sprites/footer_status_text.png",
+      "x": 470,
+      "y": 920,
+      "width": 520,
+      "height": 60
+    }
+  },
+  "svg_layers": [
+    "assets/svg/top_route_layer_1448x1086.svg",
+    "assets/svg/bottom_progress_layer_1448x1086.svg"
+  ],
+  "smoke_overlay": "assets/overlays/smoke_embers_overlay_transparent.png"
+}

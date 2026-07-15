@@ -91,6 +91,14 @@ den lokalt lagrede lista med en diskret melding.
 - Topplista lever i Netlify Blobs (`leaderboard`-store, topp 100). `nonces`- og
   `rate`-storene bruker korte tidsvinduer; utløpte nonces avvises på lesing (Blobs
   har ingen native TTL, så gamle nøkler kan hope seg opp harmløst).
+- **REISEN-toppliste** (`issue-stage-token` / `submit-voyage` / `get-voyage`)
+  bruker en egen `voyage-scores`-store — ALDRI KAPPRO sin `leaderboard`-store.
+  Den gjenbruker samme `nonces`- og `rate`-store som KAPPRO (samme SECRET,
+  ingen nye miljøvariabler). Rangeres etter SAMLET tid (lavest vinner) på tvers
+  av de 5 reise-etappene; siden REISEN er en permanent, gradvis fremgang uten
+  noe fast "start/slutt"-tidspunkt, er hver etappes beste tid sin egen
+  permanente tilstand som forbedres over så mange økter det tar — se
+  kommentarene i `src/voyage.js` og `submit-voyage.js` for begrunnelsen.
 - Asset-stiene er absolutte-fra-rot — riktig for Netlify (rot-hosting), brekker
   under sub-sti-hosting (f.eks. GitHub Pages `/repo/`).
 - **Ingen SPA catch-all redirect.** Appen har ingen client-side routing, og en

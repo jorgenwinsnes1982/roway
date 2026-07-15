@@ -35,10 +35,16 @@ export function createShieldFX() {
     const img = new Image();
     img.onload = () => {
       try {
-        tg.clearRect(0, 0, 512, 768);
-        tg.drawImage(img, 0, 0, 512, 768);
-        removeWhiteBackground(tg, 512, 768); // flood-fill from the borders only
+        // match the texture canvas (and the on-screen box) to the PNG's own
+        // aspect ratio — forcing every source into a hardcoded 512x768 would
+        // squash/stretch whatever shield artwork doesn't happen to be 2:3
+        const w = 512, h = Math.round((512 * img.height) / img.width);
+        tc.width = w; tc.height = h;
+        tg.clearRect(0, 0, w, h);
+        tg.drawImage(img, 0, 0, w, h);
+        removeWhiteBackground(tg, w, h); // flood-fill from the borders only
         tex.needsUpdate = true;
+        if (wrap) { wrap.style.aspectRatio = `${w} / ${h}`; resize(); }
       } catch { /* keep the procedural drawing */ }
     };
     img.onerror = () => { /* PNG missing -> procedural shield stays */ };
@@ -229,7 +235,7 @@ function drawProceduralShield(g, w, h) {
   g.fillStyle = '#f4f6fb';
   g.fillRect(0, 40, w, 130);
   g.fillStyle = '#00205b';
-  g.font = '900 72px "Avenir Next", system-ui, sans-serif';
+  g.font = '900 72px Cinzel, system-ui, serif';
   g.textAlign = 'center';
   g.textBaseline = 'middle';
   g.fillText('NORGE', w / 2, 108);

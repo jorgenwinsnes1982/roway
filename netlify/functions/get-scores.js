@@ -9,23 +9,32 @@
 import { getStore } from '@netlify/blobs';
 import { randomUUID } from 'node:crypto';
 
-export default async () => {
+export default async (req) => {
   try {
+    // ?day=YYYY-MM-DD → the daily-challenge board for that day; else all-time.
+    const day = sanitizeDay(new URL(req.url).searchParams.get('day'));
+    const key = day ? `day:${day}` : 'list';
+
     const board = getStore('leaderboard');
     const nonces = getStore('nonces');
 
-    const list = (await board.get('list', { type: 'json' })) || [];
+    const list = (await board.get(key, { type: 'json' })) || [];
     list.sort((a, b) => b.score - a.score);
 
     const nonce = randomUUID();
     await nonces.setJSON(nonce, { at: Date.now(), used: false });
 
-    return json(200, { scores: list.slice(0, 20), nonce });
+    return json(200, { scores: list.slice(0, 20), nonce, day: day || null });
   } catch (e) {
     // store unavailable (e.g. Blobs not provisioned) — let the client fall back
     return json(200, { scores: [], nonce: null, error: 'store-unavailable' });
   }
 };
+
+// only accept a clean ISO date; anything else → all-time board
+function sanitizeDay(d) {
+  return d && /^\d{4}-\d{2}-\d{2}$/.test(d) ? d : null;
+}
 
 function json(status, body) {
   return new Response(JSON.stringify(body), {

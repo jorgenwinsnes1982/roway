@@ -1,13 +1,151 @@
+<!--!
+  =============================================================
+
+  ROWAY — ROW THE TROPHY HOME
+
+  Designed and developed by:
+  Jørgen Winsnes
+
+  Design Director — Brand, Product & Experience
+  Winsen AS
+
+  Concept, game design, art direction, UX, production
+  and AI orchestration.
+
+  AI and creative production:
+  ChatGPT, OpenAI Codex, Claude Code, Cursor, Meshy,
+  Figma, Figma MCP, Kling 3.0 and custom AI agents
+  created and directed by Jørgen Winsnes.
+
+  Music:
+  Composed via AI direction — generated with MiniMax
+  Music (music-2.5) and Kling AI via the Pika platform
+  (pika.art).
+  Audio analysis: Google Gemini.
+  Composer and lyrics: Jørgen Winsnes.
+
+  Game technology:
+  Three.js, WebGL, JavaScript and Vite.
+
+  Versioned with GitHub. Built and deployed with Netlify.
+
+  Serverless leaderboard and signed score verification powered by
+  Netlify Functions.
+
+  www.winsen.no (https://www.winsen.no)
+  jorgen@winsen.no
+
+  =============================================================
+-->
 <!DOCTYPE html>
-<html lang="no">
+<html lang="en">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
-  <title>Vikingferd — Team Norway Rowing</title>
+  <title>ROWAY — Row the Trophy Home</title>
+  <meta name="description" content="Lead Norway’s Viking football crew on a five-stage journey to the USA, claim the World Cup trophy, and row it home to Ullevaal.">
+
+  <meta name="author" content="Jørgen Winsnes / Winsen AS">
+  <meta name="creator" content="Jørgen Winsnes">
+  <meta name="publisher" content="Winsen AS">
+  <meta name="robots" content="index, follow">
+  <meta name="theme-color" content="#101010">
+  <meta name="color-scheme" content="dark">
+
+  <link rel="canonical" href="https://roway.no/">
+
+  <!-- Open Graph / Facebook, LinkedIn -->
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="ROWAY">
+  <meta property="og:locale" content="en_US">
+  <meta property="og:title" content="ROWAY — Row the Trophy Home">
+  <meta property="og:description" content="Lead Norway’s Viking football crew on a five-stage journey to the USA, claim the World Cup trophy, and row it home to Ullevaal.">
+  <meta property="og:url" content="https://roway.no/">
+  <meta property="og:image" content="https://roway.no/share-image.jpg">
+  <meta property="og:image:secure_url" content="https://roway.no/share-image.jpg">
+  <meta property="og:image:type" content="image/jpeg">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="620">
+  <meta property="og:image:alt" content="ROWAY — Norway’s Viking football crew rowing the World Cup trophy home.">
+
+  <!-- X / Twitter Card -->
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="ROWAY — Row the Trophy Home">
+  <meta name="twitter:description" content="Lead Norway’s Viking football crew on a five-stage journey to the USA, claim the World Cup trophy, and row it home to Ullevaal.">
+  <meta name="twitter:image" content="https://roway.no/share-image.jpg">
+  <meta name="twitter:image:alt" content="ROWAY — Norway’s Viking football crew rowing the World Cup trophy home.">
+
+  <!-- Google structured data: single game/application block (see the
+       "Google structured data" implementation note in the top-of-file
+       credit comment for what's verified vs. not) -->
+  <script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": [
+    "SoftwareApplication",
+    "VideoGame"
+  ],
+  "@id": "https://roway.no/#game",
+  "name": "ROWAY",
+  "alternateName": "ROWAY — Row the Trophy Home",
+  "url": "https://roway.no/",
+  "description": "Lead Norway’s Viking football crew on a five-stage journey to the USA, claim the World Cup trophy, and row it home to Ullevaal.",
+  "image": "https://roway.no/share-image.jpg",
+  "applicationCategory": "GameApplication",
+  "genre": [
+    "Arcade",
+    "Racing",
+    "Sports"
+  ],
+  "operatingSystem": "Any",
+  "browserRequirements": "Requires a modern browser with WebGL support",
+  "gamePlatform": [
+    "Web Browser",
+    "Desktop",
+    "Mobile"
+  ],
+  "playMode": "SinglePlayer",
+  "inLanguage": "en",
+  "isAccessibleForFree": true,
+  "author": {
+    "@type": "Person",
+    "@id": "https://www.winsen.no/#jorgen-winsnes",
+    "name": "Jørgen Winsnes",
+    "jobTitle": "Design Director — Brand, Product & Experience",
+    "url": "https://www.winsen.no/",
+    "email": "mailto:jorgen@winsen.no"
+  },
+  "creator": {
+    "@type": "Organization",
+    "@id": "https://www.winsen.no/#organization",
+    "name": "Winsen AS",
+    "url": "https://www.winsen.no/"
+  }
+}
+  </script>
+
   <link rel="icon" href="/norge-skjold.png">
+  <!-- Cinzel: Roman-inspired engraved serif — headings/display text (see the
+       single #hud font-family rule below; everything inherits it by default).
+       Marcellus: a readable serif used for body/paragraph copy (.introText)
+       — Cinzel has no true lowercase forms, so longer sentences stay on
+       Marcellus instead. -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400..900&family=Marcellus&display=swap" rel="stylesheet">
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
-    html, body { width: 100%; height: 100%; overflow: hidden; background: #0a1428; }
+    /* hard-lock to the device width: overflow:hidden alone doesn't stop iOS
+       Safari's rubber-band bounce from revealing a sideways sliver — pinning
+       body with position:fixed (the standard fix) plus touch-action/
+       overscroll-behavior:none closes that off without touching the game's
+       own pointer-driven steering (touch-action only affects native browser
+       gestures, not JS pointer events). */
+    html, body {
+      width: 100%; height: 100%; overflow: hidden;
+      overscroll-behavior: none; touch-action: none; background: #0a1428;
+    }
+    body { position: fixed; inset: 0; }
     #app { position: fixed; inset: 0; }
     canvas { display: block; }
 
@@ -15,96 +153,183 @@
       --no-red: #ba0c2f;
       --no-blue: #00205b;
       --no-white: #ffffff;
+      /* Atlanterhavsferden voyage-map v2 (roway_map_dev_package) */
+      --gold: #FFD36A;
+      --gold-deep: #D6A145;
+      --gold-shadow: #7A5927;
+      --navy: #10283A;
+      --ice: #8FD3FF;
+      --glow: 0 0 14px rgba(255, 211, 106, .6);
     }
 
     #hud {
       position: fixed; inset: 0; pointer-events: none;
-      font-family: "Avenir Next", "Segoe UI", system-ui, sans-serif;
+      font-family: "Cinzel", "Avenir Next", "Segoe UI", system-ui, serif;
       color: #fff; user-select: none;
     }
 
-    /* ---- Top bar ---- */
+    /* ---- Top bar: no more boxed pills — a dark scrim across the top of the
+       screen (like a film letterbox gradient) with the readouts sitting
+       directly on top, legible against any scene behind them. */
     .topbar {
       position: absolute; top: 14px; left: 0; right: 0;
       display: flex; justify-content: center; gap: 14px; align-items: stretch;
     }
-    .pill {
-      background: linear-gradient(180deg, rgba(0,32,91,.85), rgba(0,20,60,.85));
-      border: 1px solid rgba(255,255,255,.25);
-      border-radius: 12px; padding: 8px 18px; text-align: center;
-      min-width: 110px;
-      box-shadow: 0 4px 16px rgba(0,0,0,.35);
-      backdrop-filter: blur(4px);
+    /* .topbar's own box already spans the full viewport width (left:0/right:0
+       above), so this pseudo-element — positioned relative to THAT box, not
+       the narrower centred pill row — covers the full width for free.
+       top:-14px cancels .topbar's own top offset so the gradient starts at
+       the true screen edge (y=0); the mobile media query below adjusts this
+       to match .topbar's larger offset there. */
+    .topbar::before {
+      content: '';
+      position: absolute; top: -14px; left: 0; right: 0; height: 140px;
+      background: linear-gradient(180deg, rgba(0,0,0,.72) 0%, rgba(0,0,0,.4) 55%, transparent 100%);
+      pointer-events: none;
+      /* without this, a positioned element (this pseudo, position:absolute)
+         paints ABOVE non-positioned siblings regardless of DOM order — the
+         .pill readouts below are plain static-flow divs, so the gradient was
+         actually rendering in front of the time/speed/football numbers */
+      z-index: -1;
     }
-    .pill .label { font-size: 10px; letter-spacing: 2px; opacity: .7; text-transform: uppercase; }
-    .pill .value { font-size: 24px; font-weight: 800; font-variant-numeric: tabular-nums; line-height: 1.15; }
-    .pill .value small { font-size: 12px; font-weight: 600; opacity: .7; }
+    .pill {
+      padding: 8px 18px; text-align: center;
+      min-width: 110px;
+    }
+    /* a 1px stroke at this font size eats too much of the glyph's own interior
+       into the dark outline, so it reads grey instead of white once
+       anti-aliased/compressed — a single soft shadow (same treatment as
+       #countdown, which reads cleanly white) keeps the fill fully solid. */
+    .pill .label {
+      font-size: 13px; font-weight: 700; letter-spacing: 2px; text-transform: uppercase;
+      color: #fff;
+      text-shadow: 0 2px 5px rgba(0,0,0,.75);
+    }
+    /* sans-serif (not Cinzel) so digits get real tabular-nums support — Cinzel's
+       glyphs aren't uniform-width, so the value visibly jittered sideways as
+       digits changed even with font-variant-numeric set. */
+    .pill .value {
+      font-family: "Avenir Next", "Segoe UI", system-ui, sans-serif;
+      font-size: 32px; font-weight: 800; font-variant-numeric: tabular-nums; line-height: 1.15;
+      color: #fff;
+      text-shadow: 0 2px 6px rgba(0,0,0,.75);
+    }
+    .pill .value small { font-size: 15px; font-weight: 700; opacity: .85; }
+    .pill .value .ballIcon {
+      width: 16px; height: 16px; vertical-align: -2px; margin-left: 2px;
+      filter: drop-shadow(0 2px 4px rgba(0,0,0,.75));
+    }
+
 
     /* ---- Stroke meter ---- */
     #strokeMeterWrap {
       position: absolute; bottom: 34px; left: 50%; transform: translateX(-50%);
-      width: min(420px, 70vw); text-align: center;
+      width: min(560px, 80vw); text-align: center;
     }
-    #strokeHint { font-size: 12px; letter-spacing: 2px; opacity: .85; margin-bottom: 24px; text-transform: uppercase; text-shadow: 0 1px 4px rgba(0,0,0,.6); }
     #strokeMeter {
-      position: relative; height: 26px; border-radius: 13px;
-      background: rgba(0, 20, 60, .75);
-      border: 1px solid rgba(255,255,255,.3);
-      box-shadow: 0 4px 16px rgba(0,0,0,.4);
+      position: relative; height: 168px;
+      filter: drop-shadow(0 6px 16px rgba(0,0,0,.5));
     }
-    #strokeMeter.perfectFlash { animation: meterFlash .45s ease-out; }
-    @keyframes meterFlash {
-      0% { box-shadow: 0 0 0 4px rgba(255,210,94,.95), 0 0 34px rgba(255,210,94,.9); }
-      100% { box-shadow: 0 4px 16px rgba(0,0,0,.4); }
+    #pendulumCanvas { display: block; width: 100%; height: 100%; }
+    /* narrower screens: keep the pendulum from eating too much vertical space */
+    @media (max-width: 640px) {
+      #strokeMeterWrap { width: min(440px, 90vw); }
+      #strokeMeter { height: 130px; }
     }
-    #strokeZoneGood {
-      position: absolute; top: 0; bottom: 0;
-      background: rgba(255,255,255,.16);
-      border-radius: 13px;
+    /* brief self-terminating flash — main.js only re-adds the class (never
+       removes it), so this MUST be a one-shot animation that ends at normal,
+       not a static filter that would leave #oarFill stuck bright. */
+    #strokeMeter.perfectFlash #oarFill { animation: oarPerfectFlash .45s ease-out; }
+    @keyframes oarPerfectFlash {
+      0%   { filter: brightness(1.9) saturate(1.4) drop-shadow(0 0 12px rgba(255,210,94,1)); }
+      100% { filter: brightness(1) saturate(1); }
     }
-    #strokeZone {
-      position: absolute; top: -2px; bottom: -2px;
-      border-radius: 8px;
-      background: linear-gradient(180deg, #ffe9a3, #ffc93c 55%, #e6a817);
-      box-shadow: 0 0 16px rgba(255,210,94,.85), inset 0 1px 3px rgba(255,255,255,.7);
-      animation: zonePulse 1.35s ease-in-out infinite;
+    #strokeMeter svg { display: block; width: 100%; height: 100%; overflow: visible; }
+    #oarBody { fill: url(#woodGrad); stroke: url(#edgeGrad); stroke-width: 5; }
+    /* static green release band painted into the blade */
+    #oarZoneBand { fill: url(#zoneGrad); animation: oarZonePulse 1.35s ease-in-out infinite; }
+    @keyframes oarZonePulse { 0%,100% { opacity:.7 } 50% { opacity:1 } }
+    /* the yellow energy fill — grows left→right, clipped to the oar silhouette */
+    #oarFill { fill: url(#fillGrad); }
+    /* in the release zone: brighter + stronger pulse ("SLIPP NÅ") */
+    #oarFill.in-zone { fill: url(#fillGradHot); animation: oarHot .5s ease-in-out infinite; }
+    @keyframes oarHot {
+      0%,100% { filter: brightness(1.05) drop-shadow(0 0 3px rgba(255,210,94,.6)); }
+      50%     { filter: brightness(1.45) drop-shadow(0 0 10px rgba(255,210,94,1)); }
     }
-    @keyframes zonePulse {
-      0%, 100% { box-shadow: 0 0 10px rgba(255,210,94,.55), inset 0 1px 3px rgba(255,255,255,.7); }
-      50% { box-shadow: 0 0 22px rgba(255,210,94,1), inset 0 1px 3px rgba(255,255,255,.7); }
-    }
-    #strokeZone::before {
-      content: '▼'; position: absolute; top: -19px; left: 50%; transform: translateX(-50%);
-      font-size: 13px; color: #ffd25e; text-shadow: 0 0 8px rgba(255,210,94,.9);
-    }
-    #strokeZone::after {
-      content: 'PERFEKT'; position: absolute; inset: 0;
-      display: flex; align-items: center; justify-content: center;
-      font-size: 9px; font-weight: 900; letter-spacing: 1.5px; color: #5b3c00;
-    }
-    #strokeFill {
-      position: absolute; left: 0; top: 0; bottom: 0; width: 0%;
-      border-radius: 13px 4px 4px 13px;
-      background: linear-gradient(90deg, rgba(158,205,253,.35), rgba(158,205,253,.85));
-      box-shadow: 0 0 10px rgba(158,205,253,.5);
-    }
-    #strokeFill.in-zone {
-      background: linear-gradient(90deg, rgba(255,210,94,.5), #ffd25e);
-      box-shadow: 0 0 18px rgba(255,210,94,1);
-    }
-    #strokeFill.over {
-      background: linear-gradient(90deg, rgba(255,110,110,.5), #ff6e6e);
-      box-shadow: 0 0 18px rgba(255,90,90,.9);
-      animation: overShake .12s linear infinite;
-    }
+    /* held too long: yellow → red + shake ("ÅRENE SKLIR!") */
+    #oarFill.over { fill: url(#fillGradOver); animation: overShake .12s linear infinite; }
+    .oarMid { stroke: rgba(255,255,255,.85); stroke-width: 3; stroke-dasharray: 12 9; fill: none; }
     @keyframes overShake {
       0%, 100% { transform: translateX(0); }
       50% { transform: translateX(2px); }
+    }
+    /* recovery gate: holding right after a stroke but not yet accumulating —
+       a dim pulse at the handle end so the hold reads as "gate closing", not
+       a dead input. Derived state (see update()), no reset needed. */
+    #strokeMeter.recovering #oarFill { opacity: .45; animation: oarRecoverPulse .3s ease-in-out infinite; }
+    @keyframes oarRecoverPulse {
+      0%, 100% { opacity: .45; }
+      50% { opacity: .65; }
+    }
+
+    /* ---- Tutorial row-bar demo: the real pendulum meter, looping on the
+       how-to screen (canvas rendered by main.js into PEND_DEMO) ---- */
+    #pendDemoWrap {
+      position: relative; width: min(440px, 88vw); height: 128px; margin-top: 2px;
+      filter: drop-shadow(0 6px 16px rgba(0,0,0,.5));
+    }
+    #pendulumCanvasDemo { display: block; width: 100%; height: 100%; }
+    @media (max-width: 640px) {
+      #pendDemoWrap { width: min(380px, 90vw); height: 104px; }
+    }
+
+    /* ---- Stage chapter card: "ETAPPE N AV 5 / NAVN" at voyage race start.
+       Self-terminating keyframe animation (perfectFlash pattern, Regel 9):
+       main.js only ever re-adds .play — fade in, hold through the countdown,
+       fade out, no JS cleanup to forget. ---- */
+    /* full-height flex box so the pair centers vertically on screen — the
+       keyframe's translateY below is a small relative nudge on TOP of this
+       centered base position, not an absolute offset, so the two compose
+       cleanly instead of fighting over the same transform. */
+    #stageChapter {
+      position: absolute; inset: 0;
+      display: flex; flex-direction: column; align-items: center;
+      /* anchored near the top (was justify-content:center) — the numeric
+         #countdown below is ALSO a full-screen centered overlay, and both
+         being dead-centered meant the giant stage name and the giant
+         countdown digit rendered directly on top of each other for most of
+         the chapter card's 3.1s run. Pushing this one up clears real
+         vertical space between the two. */
+      justify-content: flex-start; padding-top: 16vh;
+      text-align: center;
+      pointer-events: none; opacity: 0; z-index: 15;
+    }
+    #stageChapter.play { animation: chapterCard 3.1s ease-out forwards; }
+    #stageChapterKicker {
+      font-size: 26px; font-weight: 800; letter-spacing: 8px; color: #ffd25e;
+      text-shadow: 0 0 16px rgba(255,210,94,.6), 0 3px 10px rgba(0,0,0,.85);
+      margin-bottom: 10px;
+    }
+    /* solid white fill (was a pale-blue gradient clip that washed out badly
+       against bright sky) + a strong dark shadow for contrast, with a soft
+       blue glow behind it to keep the same icy accent color */
+    #stageChapterName {
+      font-size: clamp(52px, 9.2vw, 88px); font-weight: 900; letter-spacing: 4px;
+      color: #fff;
+      text-shadow: 0 3px 6px rgba(0,0,0,.95), 0 0 26px rgba(0,0,0,.7), 0 0 44px rgba(79,159,224,.55);
+    }
+    @keyframes chapterCard {
+      0%   { opacity: 0; transform: translateY(14px) scale(.96); }
+      12%  { opacity: 1; transform: translateY(0) scale(1); }
+      74%  { opacity: 1; }
+      100% { opacity: 0; transform: translateY(-10px) scale(1.02); }
     }
 
     /* ---- Feedback popup ---- */
     #feedback {
       position: absolute; bottom: 132px; left: 50%; transform: translateX(-50%) scale(.6);
+      width: min(90vw, 480px); text-align: center;
       font-size: 30px; font-weight: 900; letter-spacing: 3px;
       opacity: 0; transition: none; text-transform: uppercase;
       text-shadow: 0 2px 12px rgba(0,0,0,.7);
@@ -118,35 +343,226 @@
       100% { opacity: 0; transform: translateX(-50%) scale(1) translateY(-24px); }
     }
 
-    /* ---- Mute button ---- */
-    #muteBtn {
-      position: absolute; top: 14px; left: 14px; z-index: 20;
+    /* ---- Top-corner icon buttons: Settings (top-left) + Controls/Restart (top-right) ---- */
+    #settingsBtn, #controlsBtn, #restartBtn {
+      position: absolute; top: 14px; z-index: 20;
       width: 44px; height: 44px; border-radius: 50%;
       display: flex; align-items: center; justify-content: center;
-      font-size: 20px; cursor: pointer; pointer-events: auto;
-      background: linear-gradient(180deg, rgba(0,32,91,.85), rgba(0,20,60,.85));
+      cursor: pointer; pointer-events: auto;
+      background: #000;
       border: 1px solid rgba(255,255,255,.25);
       box-shadow: 0 4px 16px rgba(0,0,0,.35);
       backdrop-filter: blur(4px);
-      transition: transform .12s, filter .12s;
+      transition: transform .16s cubic-bezier(.22,1,.36,1), filter .16s cubic-bezier(.22,1,.36,1); transition-delay: 0s; will-change: transform;
     }
-    #muteBtn:hover { filter: brightness(1.3); transform: scale(1.08); }
-    #muteBtn.muted { opacity: .65; }
+    #settingsBtn { left: 14px; }
+    #controlsBtn { right: 14px; }
+    #restartBtn { right: 66px; } /* inboard of #controlsBtn */
+    #settingsBtn img, #controlsBtn img, #restartBtn img { width: 20px; height: 20px; display: block; pointer-events: none; }
+    #settingsBtn:hover, #controlsBtn:hover, #restartBtn:hover { filter: brightness(1.3); transform: translateY(-2px) scale(1.06); }
+    #settingsBtn:active, #controlsBtn:active, #restartBtn:active { transform: scale(.94); transition-duration: .05s; }
 
-    /* ---- Restart button (top right) + confirm dialog ---- */
-    #restartBtn {
-      position: absolute; top: 14px; right: 14px; z-index: 20;
-      width: 44px; height: 44px; border-radius: 50%;
-      display: flex; align-items: center; justify-content: center;
-      font-size: 22px; font-weight: 800; cursor: pointer; pointer-events: auto;
-      color: #fff; font-family: inherit;
-      background: linear-gradient(180deg, rgba(0,32,91,.85), rgba(0,20,60,.85));
-      border: 1px solid rgba(255,255,255,.25);
-      box-shadow: 0 4px 16px rgba(0,0,0,.35);
-      backdrop-filter: blur(4px);
-      transition: transform .12s, filter .12s;
+    /* ---- Settings modal (music / SFX toggles) ---- */
+    /* above every .screen (all z-index auto) AND the top-corner buttons (z 20),
+       since it can be opened from the menu where #startScreen would otherwise
+       stack on top of it (same auto z-index, later in the DOM) */
+    #settingsScreen { z-index: 50; }
+    /* How-to-play needs the same boost: opened via #controlsBtn (z-index 20)
+       mid-race, over the topbar/touch controls — without an explicit
+       z-index here it's z-index:auto (effectively 0) and those z:20
+       elements would paint over it regardless of DOM order. */
+    #howtoScreen { z-index: 50; }
+    /* DEV-ONLY ship viewer — transparent so the isolated 3D scene shows
+       through instead of the usual dark .screen veil */
+    #shipViewerScreen {
+      background: transparent; z-index: 50; justify-content: flex-end;
+      padding-bottom: 48px; cursor: grab;
     }
-    #restartBtn:hover { filter: brightness(1.3); transform: scale(1.08) rotate(-40deg); }
+    #shipViewerScreen:active { cursor: grabbing; }
+    #shipViewerHint {
+      font-size: 12px; letter-spacing: 2px; text-transform: uppercase;
+      color: rgba(255,255,255,.65); text-shadow: 0 1px 4px rgba(0,0,0,.6);
+      pointer-events: none;
+    }
+    .modalClose {
+      position: absolute; top: 12px; right: 14px; width: 30px; height: 30px;
+      border-radius: 50%; display: flex; align-items: center; justify-content: center;
+      font-size: 18px; line-height: 1; cursor: pointer; color: #fff; font-family: inherit;
+      background: rgba(255,255,255,.1); border: 1px solid rgba(255,255,255,.25);
+      transition: transform .15s ease, background .15s ease;
+    }
+    .modalClose:hover { background: rgba(255,255,255,.22); transform: scale(1.1); }
+    .settingRow {
+      display: flex; align-items: center; justify-content: space-between; gap: 20px;
+      padding: 12px 4px; font-size: 15px; font-weight: 700;
+    }
+    .settingRow + .settingRow { border-top: 1px solid rgba(255,255,255,.14); }
+    .toggle {
+      position: relative; width: 52px; height: 30px; border-radius: 999px; cursor: pointer;
+      background: rgba(255,255,255,.18); border: 1px solid rgba(255,255,255,.3);
+      transition: background .18s ease;
+    }
+    .toggle::after {
+      content: ''; position: absolute; top: 3px; left: 3px; width: 22px; height: 22px;
+      border-radius: 50%; background: #fff; box-shadow: 0 1px 3px rgba(0,0,0,.4);
+      transition: transform .18s cubic-bezier(.34,1.56,.64,1);
+    }
+    .toggle.on { background: #4caf6a; border-color: #4caf6a; }
+    .toggle.on::after { transform: translateX(22px); }
+    .settingResetBtn {
+      padding: 8px 14px; border-radius: 10px; font-family: inherit;
+      font-size: 12px; font-weight: 800; letter-spacing: .4px; cursor: pointer;
+      color: #fff; white-space: nowrap;
+      background: rgba(255,255,255,.1); border: 1px solid rgba(255,255,255,.3);
+      transition: background .15s ease, border-color .15s ease, transform .15s ease;
+    }
+    .settingResetBtn:hover { background: rgba(255,255,255,.2); }
+    .settingResetBtn:active { transform: scale(.96); }
+    /* armed = waiting for the confirming second tap (see main.js) — reads as a warning */
+    .settingResetBtn.armed { background: #b33636; border-color: #e2685f; }
+    /* Settings modal panel: same gold-framed dark plate + top diamond finial
+       as the leaderboard board (Figma frame 179:1231 language). Scoped to
+       #settingsScreen — #confirmScreen gets its own identical block below
+       (same look, but its own selector since .confirmBox is the shared
+       class both screens build on). */
+    #settingsScreen .confirmBox {
+      background: linear-gradient(180deg, #17140f, #0a0908);
+      border: 1px solid #b98a3e;
+      border-radius: 10px;
+      box-shadow: 0 0 0 3px rgba(8, 7, 6, .85), 0 0 0 4px rgba(185, 138, 62, .5),
+                  inset 0 0 26px rgba(0, 0, 0, .6);
+      padding: 56px 28px 28px;
+    }
+    #settingsScreen .confirmBox::before {
+      content: ''; position: absolute; z-index: 2; left: 50%; top: 0;
+      width: 15px; height: 15px; transform: translate(-50%, -50%) rotate(45deg);
+      background: #0d0b09; border: 2px solid #c9973f;
+      box-shadow: 0 0 8px rgba(0, 0, 0, .6);
+    }
+    #settingsScreen .confirmBox::after {
+      content: ''; position: absolute; z-index: 3; left: 50%; top: 0;
+      width: 5px; height: 5px; transform: translate(-50%, -50%) rotate(45deg);
+      background: #c9973f;
+    }
+    /* gold-tinted row dividers inside the plate, like the board's framing */
+    #settingsScreen .settingRow + .settingRow { border-top-color: rgba(185, 138, 62, .28); }
+    /* Restart-confirm dialog: identical gold-framed black plate. Needs the
+       same z-index:50 boost as settings/how-to — opened via #restartBtn,
+       which sits at z-index:20 like #controlsBtn/#settingsBtn. */
+    #confirmScreen { z-index: 50; }
+    #confirmScreen .confirmBox {
+      position: relative; /* anchors the ::before/::after diamond finial */
+      background: linear-gradient(180deg, #17140f, #0a0908);
+      border: 1px solid #b98a3e;
+      border-radius: 10px;
+      box-shadow: 0 0 0 3px rgba(8, 7, 6, .85), 0 0 0 4px rgba(185, 138, 62, .5),
+                  inset 0 0 26px rgba(0, 0, 0, .6);
+      padding: 56px 28px 28px;
+    }
+    #confirmScreen .confirmBox::before {
+      content: ''; position: absolute; z-index: 2; left: 50%; top: 0;
+      width: 15px; height: 15px; transform: translate(-50%, -50%) rotate(45deg);
+      background: #0d0b09; border: 2px solid #c9973f;
+      box-shadow: 0 0 8px rgba(0, 0, 0, .6);
+    }
+    #confirmScreen .confirmBox::after {
+      content: ''; position: absolute; z-index: 3; left: 50%; top: 0;
+      width: 5px; height: 5px; transform: translate(-50%, -50%) rotate(45deg);
+      background: #c9973f;
+    }
+    /* ---- About-the-game modal: same gold-framed plate as settings/confirm,
+       but wider and with a SCROLLING body — the text is the full making-of
+       story, not a dialog. Body copy on Marcellus (long sentence text — see
+       the font note at the top), themed thin scrollbar like the boards. */
+    #aboutScreen { z-index: 50; }
+    #aboutScreen .confirmBox {
+      position: relative;
+      background: linear-gradient(180deg, #17140f, #0a0908);
+      border: 1px solid #b98a3e;
+      border-radius: 10px;
+      box-shadow: 0 0 0 3px rgba(8, 7, 6, .85), 0 0 0 4px rgba(185, 138, 62, .5),
+                  inset 0 0 26px rgba(0, 0, 0, .6);
+      padding: 56px 28px 28px;
+      max-width: min(600px, 92vw);
+    }
+    #aboutScreen .confirmBox::before {
+      content: ''; position: absolute; z-index: 2; left: 50%; top: 0;
+      width: 15px; height: 15px; transform: translate(-50%, -50%) rotate(45deg);
+      background: #0d0b09; border: 2px solid #c9973f;
+      box-shadow: 0 0 8px rgba(0, 0, 0, .6);
+    }
+    #aboutScreen .confirmBox::after {
+      content: ''; position: absolute; z-index: 3; left: 50%; top: 0;
+      width: 5px; height: 5px; transform: translate(-50%, -50%) rotate(45deg);
+      background: #c9973f;
+    }
+    .aboutBody {
+      max-height: min(56vh, 520px); overflow-y: auto; scroll-behavior: smooth;
+      text-align: left; padding-right: 14px;
+      font-family: "Marcellus", serif;
+      font-size: 16.5px; line-height: 1.7; color: rgba(255, 255, 255, .88);
+      scrollbar-width: thin; scrollbar-color: rgba(143, 208, 255, .4) transparent;
+    }
+    .aboutBody p { margin: 0 0 14px; }
+    .aboutBody p:last-child { margin-bottom: 0; }
+    .aboutLede {
+      font-family: "Cinzel", serif; font-weight: 800; letter-spacing: .8px;
+      color: #ffd25e; text-shadow: 0 0 10px rgba(255, 210, 94, .3);
+    }
+    .aboutSign {
+      font-family: "Cinzel", serif; font-weight: 800; letter-spacing: 1.5px;
+      text-transform: uppercase; color: #ffd25e;
+      text-shadow: 0 0 10px rgba(255, 210, 94, .35);
+    }
+    /* "Main menu" set apart at the bottom, below the two paired in-race
+       choices — a quieter exit action, not a third equal-weight button.
+       The margin has to live on the .raster-btn WRAPPER, not this button:
+       enhanceRuneButtons() (runeButtons.js) turns the button into a grid
+       item (.raster-btn__label) inside that wrapper, so a margin here grew
+       the grid row's auto-height instead of spacing the button from its
+       siblings — the raster pill graphic (no margin) stayed centered in
+       that taller row while the text (pushed down by its own margin) didn't,
+       reading as off-center label text. */
+    .raster-btn:has(.confirmMenuBtn) { margin-top: 18px; }
+    /* ---- How-to-play as a modal (opened from the top-right controls icon):
+       same gold-framed plate + diamond finial as settings/leaderboard.
+       Default (pre-race flow) keeps the transparent full-bleed layout —
+       .howtoInner is just a passthrough column there. ---- */
+    .howtoInner {
+      position: relative; display: flex; flex-direction: column;
+      align-items: center; gap: 14px; width: 100%;
+    }
+    .howtoModalTitle { display: none; }
+    #howtoScreen .modalClose { display: none; }
+    /* hide BOTH forms of the hero art: the fallback <img> and the WebGL
+       shine canvas (#howtoLogoCanvas) that normally replaces it */
+    #howtoScreen.howtoModal .howtoTitleImg,
+    #howtoScreen.howtoModal #howtoLogoCanvas { display: none; }
+    #howtoScreen.howtoModal .howtoModalTitle { display: block; }
+    #howtoScreen.howtoModal .modalClose { display: flex; }
+    #howtoScreen.howtoModal .howtoInner {
+      width: min(480px, 92vw);
+      padding: 56px 28px 28px;
+      background: linear-gradient(180deg, #17140f, #0a0908);
+      border: 1px solid #b98a3e;
+      border-radius: 10px;
+      box-shadow: 0 0 0 3px rgba(8, 7, 6, .85), 0 0 0 4px rgba(185, 138, 62, .5),
+                  inset 0 0 26px rgba(0, 0, 0, .6);
+    }
+    #howtoScreen.howtoModal .howtoInner::before {
+      content: ''; position: absolute; z-index: 2; left: 50%; top: 0;
+      width: 15px; height: 15px; transform: translate(-50%, -50%) rotate(45deg);
+      background: #0d0b09; border: 2px solid #c9973f;
+      box-shadow: 0 0 8px rgba(0, 0, 0, .6);
+    }
+    #howtoScreen.howtoModal .howtoInner::after {
+      content: ''; position: absolute; z-index: 3; left: 50%; top: 0;
+      width: 5px; height: 5px; transform: translate(-50%, -50%) rotate(45deg);
+      background: #c9973f;
+    }
+
+    /* ---- Restart confirm dialog (button styling merged into the shared
+       top-corner icon-button block above) ---- */
     .confirmBox {
       background: linear-gradient(180deg, rgba(0,32,91,.95), rgba(0,16,48,.95));
       border: 1px solid rgba(255,255,255,.3);
@@ -157,9 +573,36 @@
     .confirmTitle { font-size: 26px; font-weight: 900; letter-spacing: 1px; margin-bottom: 8px; }
     .confirmText { font-size: 14px; opacity: .85; line-height: 1.6; margin-bottom: 18px; }
 
+    /* Mobile: keep all three utility buttons at the TOP (smaller), and push
+       the race topbar pills down below them — they used to sit at the bottom
+       where they collided with the touch controls / pendulum area. */
     @media (max-width: 640px) {
-      #muteBtn { top: auto; bottom: 14px; left: 10px; width: 38px; height: 38px; font-size: 17px; }
-      #restartBtn { top: auto; bottom: 14px; right: 10px; width: 38px; height: 38px; font-size: 19px; }
+      #settingsBtn { top: 10px; left: 8px; width: 38px; height: 38px; }
+      #controlsBtn { top: 10px; right: 8px; width: 38px; height: 38px; }
+      #restartBtn { top: 10px; right: 54px; width: 38px; height: 38px; }
+      #settingsBtn img, #controlsBtn img, #restartBtn img { width: 17px; height: 17px; }
+    }
+
+    /* ---- Boot preloader: the rune power-bar "charges" 0→100% before the
+       cinematic intro/splash reveal. Purely cosmetic pacing (no real async
+       asset loading to track) — reuses the exact bar art + energy-spark
+       rendering from the race meter via PEND_PRELOAD in main.js. ---- */
+    #preloaderScreen {
+      position: fixed; inset: 0; z-index: 200;
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      gap: 18px;
+      background: #05070f;
+      transition: opacity .5s ease, visibility .5s;
+    }
+    #preloaderScreen.hidden { opacity: 0; visibility: hidden; pointer-events: none; }
+    #preloadBarWrap {
+      position: relative; width: min(440px, 88vw); height: 128px;
+      filter: drop-shadow(0 6px 16px rgba(0,0,0,.5));
+    }
+    #pendulumCanvasPreload { display: block; width: 100%; height: 100%; }
+    #preloadPct { font-variant-numeric: tabular-nums; letter-spacing: 1px; }
+    @media (max-width: 640px) {
+      #preloadBarWrap { width: min(380px, 90vw); height: 104px; }
     }
 
     /* ---- Cinematic intro letterbox ---- */
@@ -183,7 +626,7 @@
     #roCue {
       position: absolute; top: 22%; left: 50%; transform: translate(-50%, 0) scale(.5);
       font-size: clamp(40px, 8vw, 74px); font-weight: 900; letter-spacing: 6px;
-      color: #ffd25e; text-shadow: 0 0 26px rgba(255,210,94,.8), 0 4px 14px rgba(0,0,0,.7);
+      color: #fff; text-shadow: 0 0 26px rgba(255,255,255,.7), 0 4px 14px rgba(0,0,0,.8);
       opacity: 0; pointer-events: none;
     }
     #roCue.pop { animation: roPop .55s ease-out; }
@@ -194,26 +637,6 @@
       100% { opacity: 0; transform: translate(-50%, -14px) scale(.95); }
     }
 
-    /* ---- Tempo dots (Haaland's drum meter) ---- */
-    #tempoDots {
-      display: flex; align-items: center; justify-content: center; gap: 6px;
-      margin-bottom: 8px; height: 16px;
-    }
-    #tempoDots .drumIcon { font-size: 14px; margin-right: 4px; }
-    #tempoDots i {
-      width: 9px; height: 9px; border-radius: 50%;
-      background: rgba(255,255,255,.18); border: 1px solid rgba(255,255,255,.35);
-      transition: background .15s, box-shadow .15s;
-    }
-    #tempoDots i.on {
-      background: #ffd25e;
-      box-shadow: 0 0 8px rgba(255,210,94,.9);
-    }
-    #tempoDots.maxed .drumIcon { animation: drumShake .3s linear infinite; }
-    @keyframes drumShake {
-      0%, 100% { transform: rotate(-8deg); }
-      50% { transform: rotate(8deg); }
-    }
 
     /* ---- Combo badge ---- */
     #comboBadge {
@@ -256,43 +679,27 @@
       position: absolute; inset: 0; display: flex; flex-direction: column;
       align-items: center; justify-content: center; gap: 14px;
       overflow-y: auto; padding-top: 30px; padding-bottom: 30px;
-      background: radial-gradient(ellipse at 50% 35%, rgba(0,32,91,.55), rgba(4,10,30,.88));
+      background: rgba(0, 0, 0, .8);
       pointer-events: auto; text-align: center; padding: 20px;
-      transition: opacity .5s;
+      transition: opacity .5s, visibility .5s;
     }
-    .screen.hidden { opacity: 0; pointer-events: none; }
-    /* result screen: lighter veil so the fireworks show through */
-    #resultScreen {
-      background: radial-gradient(ellipse at 50% 35%, rgba(0,32,91,.30), rgba(4,10,30,.55));
-    }
-    .flag-band { display: flex; gap: 0; border-radius: 4px; overflow: hidden; box-shadow: 0 4px 20px rgba(0,0,0,.5); }
-    .flag-band span { width: 46px; height: 10px; }
-    /* ---- WebGL shader shield (replaces the #logoShield img when available) ---- */
-    #shieldWrap {
-      width: clamp(130px, 24vw, 210px);
-      aspect-ratio: 2 / 3;
-      pointer-events: none;
-      opacity: 0;
-      transform: translateY(-30px) scale(0.82);
-    }
-    #shieldWrap.in {
-      transition: opacity .55s ease-out, transform .85s cubic-bezier(.22, 1, .36, 1);
-      opacity: 1;
-      transform: translateY(0) scale(1);
-    }
-    #shieldCanvas {
-      width: 100%;
-      height: 100%;
-      display: block;
-      filter: drop-shadow(0 8px 26px rgba(255, 210, 94, .35)) drop-shadow(0 4px 12px rgba(0, 0, 0, .5));
-      will-change: transform;
-    }
-    #logoShield.logoHidden { display: none; }
-
-    /* ---- WebGL shader wordmark (replaces .title when WebGL is available) ---- */
+    /* visibility:hidden (not just opacity+pointer-events) — a descendant with
+       its OWN explicit pointer-events:auto (e.g. .vm-sprite--interactive on
+       the voyage map) overrides an ancestor's pointer-events:none and stays
+       clickable underneath whatever's actually showing on top of it. Only
+       visibility truly removes a subtree from hit-testing regardless of any
+       pointer-events a child sets on itself. The transition keeps the same
+       fade-out look (visibility flips at the end of the opacity transition
+       when hiding, immediately when showing — standard UA behaviour). */
+    .screen.hidden { opacity: 0; pointer-events: none; visibility: hidden; }
+    /* ---- WebGL shader key art (replaces .title when WebGL is available) ----
+       keyart_final.png is ~4:3 (1448x1086) — characters + shield + wordmark
+       all in one image, so this single canvas now stands in for what used
+       to be two separate elements (shield + wordmark) */
     #logoCanvas {
-      width: min(84vw, 620px);
-      aspect-ratio: 2172 / 724;
+      width: min(87vw, 630px);
+      aspect-ratio: 1448 / 1086;
+      /* +15% on mobile only — see the max-width:640px rule below */
       display: block;
       pointer-events: none; /* purely visual — clicks pass straight through */
       opacity: 0;
@@ -305,15 +712,51 @@
       opacity: 1;
       transform: translateY(0) scale(1);
     }
-    .title.logoHidden { display: none; }
-
-    #logoShield {
-      width: clamp(120px, 22vw, 190px); height: auto;
-      filter: drop-shadow(0 6px 26px rgba(255, 210, 94, .45)) drop-shadow(0 3px 10px rgba(0, 0, 0, .55));
+    /* mobile splash logo, 15% larger — the 630px cap never engages this small,
+       so bumping the vw side is what actually grows it here */
+    @media (max-width: 640px) {
+      #logoCanvas { width: min(calc(87vw * 1.15), 630px); }
     }
+    .title.logoHidden { display: none; }
+    /* how-to hero gets the same WebGL shine/tilt canvas as the splash logo.
+       Sized/positioned exactly like .howtoTitleImg so nothing shifts when the
+       canvas takes over; the <img> is the plain-DOM fallback (hidden below). */
+    #howtoLogoCanvas {
+      width: min(304px, 57.6vw);
+      aspect-ratio: 704 / 596;
+      display: block; margin: 0 auto -6px;
+      pointer-events: none; /* purely visual — clicks pass straight through */
+      opacity: 0;
+      transform: translateY(18px) scale(0.94);
+      filter: drop-shadow(0 10px 26px rgba(0, 0, 0, .55));
+      will-change: transform;
+    }
+    #howtoLogoCanvas.in {
+      transition: opacity .7s ease-out, transform 1s cubic-bezier(.22, 1, .36, 1);
+      opacity: 1;
+      transform: translateY(0) scale(1);
+    }
+    .howtoTitleImg.logoHidden { display: none; }
+    /* voyage-complete hero shot gets the same shine canvas, but full-bleed
+       instead of a small fixed box: createVoyageDoneFX() (logo.js) computes
+       true object-fit:cover sizing in JS and sets width/height/left/top
+       directly (the container's own aspect varies with the viewport, unlike
+       the small fixed-box logo/how-to canvases). No transform here for
+       centering on purpose — mountShineFX's per-frame tilt loop overwrites
+       canvas.style.transform wholesale, which would silently erase a
+       transform-based centering trick. */
+    #voyageDoneShineCanvas {
+      position: absolute;
+      opacity: 0; pointer-events: none;
+    }
+    #voyageDoneShineCanvas.in { transition: opacity .8s ease-out; opacity: 1; }
+    #voyageDoneImg.logoHidden { display: none; }
+
+    /* Result-card redesign: the shield reads as the top of the "trophy
+       moment" now, not a small badge — bumped up from 64px */
     #resultShield {
-      width: 64px; height: auto;
-      filter: drop-shadow(0 3px 14px rgba(255, 210, 94, .4));
+      width: 96px; height: auto;
+      filter: drop-shadow(0 4px 18px rgba(255, 210, 94, .45));
     }
     .title {
       font-size: clamp(38px, 7vw, 72px); font-weight: 900; letter-spacing: 4px;
@@ -324,35 +767,148 @@
     }
     .subtitle { font-size: clamp(14px, 2.2vw, 20px); font-weight: 600; letter-spacing: 5px; color: var(--no-red); text-transform: uppercase;
       text-shadow: 0 0 18px rgba(186,12,47,.5); }
+    /* splash screen keeps a single accent (gold) for its text hierarchy — red stays
+       reserved for the primary CTA button so the screen doesn't compete for attention */
+    #startScreen .subtitle { color: #ffd25e; text-shadow: 0 0 18px rgba(255,210,94,.35); }
     .introText {
-      font-size: 15px; line-height: 1.8; opacity: .9; max-width: 440px;
+      font-family: "Marcellus", serif;
+      font-size: clamp(15px, 2.4vw, 20px); font-weight: 500; line-height: 1.5; opacity: .95; max-width: 520px;
     }
+    /* extra breathing room before the buttons/STEER-ROW lines below — the
+       .screen flex gap alone reads too tight under a full paragraph of body copy */
+    #howtoScreen .introText, #startScreen .introText { margin-bottom: 14px; }
+    /* keyword highlights inside the how-to intro line — same ice-blue/green
+       accents used elsewhere (.howtoLine), just bolder to read as callouts */
+    #howtoScreen .introText b {
+      color: #8fd0ff; font-weight: 800; text-shadow: 0 0 10px rgba(120,190,255,.45);
+    }
+    #howtoScreen .introText .greenZone {
+      color: rgb(150,240,165); font-weight: 800; white-space: nowrap;
+      text-shadow: 0 0 10px rgba(150,240,165,.35);
+    }
+    #dailyLabel {
+      font-size: 12px; letter-spacing: 1.5px; text-transform: uppercase;
+      color: #ffd25e; opacity: .85; margin-top: -2px;
+    }
+    #dailyLabel #dailyDate { font-weight: 800; }
     .menuBtns { display: flex; gap: 14px; flex-wrap: wrap; justify-content: center; }
-    .ctaSecondary {
-      background: linear-gradient(180deg, rgba(0,50,130,.9), rgba(0,32,91,.9));
-      box-shadow: 0 6px 24px rgba(0,32,91,.5), inset 0 1px 0 rgba(255,255,255,.2);
-      animation: none;
+    /* splash: the two mode buttons stacked vertically, forced to equal width
+       (the raster wrappers fill the column, so the middle texture just stretches) */
+    .menuBtns--stack { flex-direction: column; align-items: stretch; flex-wrap: nowrap;
+      width: min(360px, 84vw); margin: 0 auto; gap: 12px; }
+    .menuBtns--stack .raster-btn { width: 100%; }
+    .lbTabs { display: flex; gap: 6px; justify-content: center; margin-bottom: 8px; flex-wrap: wrap; }
+    .lbTab {
+      font-family: inherit; font-size: 12px; font-weight: 700; letter-spacing: 1px;
+      text-transform: uppercase; color: rgba(255,255,255,.6); cursor: pointer;
+      padding: 6px 18px; border-radius: 999px;
+      background: rgba(0,20,60,.5); border: 1px solid rgba(255,255,255,.2);
+      transition: color .16s var(--btn-ease-out), background .16s var(--btn-ease-out), border-color .16s var(--btn-ease-out), transform .16s var(--btn-ease-out);
+      --btn-ease-out: cubic-bezier(.22, 1, .36, 1);
+      transition-delay: 0s;
+    }
+    .lbTab:hover:not(.active) { color: #fff; background: rgba(255,255,255,.14); border-color: rgba(255,255,255,.45); transform: translateY(-2px) scale(1.06); }
+    .lbTab:active { transform: scale(.94); transition-duration: .05s; }
+    .lbTab.active {
+      color: #04204f; background: #ffd25e; border-color: #ffd25e;
+    }
+    .lbTab.active:hover { transform: translateY(-2px) scale(1.06); filter: brightness(1.08); }
+    /* .ctaSecondary/.ctaGhost visuals come from the raster wrapper
+       (src/runeButtons.js); these classes only carry typography. */
+    .ctaGhost {
+      font-size: 13px; font-weight: 700; letter-spacing: 1.5px;
+      padding: 9px 24px; cursor: pointer; text-transform: uppercase;
     }
     .titleSmall { font-size: clamp(24px, 5vw, 40px); }
-    .howtoGrid {
-      display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
-      gap: 10px; width: min(600px, 90vw);
+    /* small credit line pinned to the splash screen's bottom edge — outside
+       the centred menu flow, so it stays put near the viewport bottom
+       regardless of how tall that content is */
+    #startScreen .creditLine {
+      position: absolute; left: 0; right: 0; bottom: 14px;
+      font-size: 12px; letter-spacing: .4px; color: rgba(255,255,255,.5);
+      text-shadow: 0 1px 4px rgba(0,0,0,.6);
+      pointer-events: none; /* only the link inside needs clicks */
     }
-    .howCard {
-      background: rgba(0, 20, 60, .65); border: 1px solid rgba(255,255,255,.22);
-      border-radius: 12px; padding: 12px 14px; text-align: left;
-      font-size: 13.5px; line-height: 1.55;
+    #startScreen .creditLine a {
+      color: rgba(255,255,255,.75); text-decoration: underline;
+      text-underline-offset: 2px; pointer-events: auto;
+      transition: color .15s ease;
     }
-    .howCard b { color: #ffd25e; }
+    #startScreen .creditLine a:hover { color: #ffd25e; }
+    @media (max-width: 640px) {
+      #startScreen .creditLine { bottom: 10px; font-size: 11px; }
+    }
+    /* how-to hero: the ship + "HOW TO PLAY" ice-title art replaces the old
+       text heading. No box behind it — sits centred over the scene. */
+    .howtoTitleImg {
+      display: block; width: min(304px, 57.6vw); height: auto; margin: 0 auto -6px;
+      filter: drop-shadow(0 10px 26px rgba(0,0,0,.55));
+      pointer-events: none; user-select: none; -webkit-user-drag: none;
+    }
+    /* the 3 instruction lines: centred, no panel/box behind them */
+    .howtoLines {
+      display: flex; flex-direction: column; gap: 8px;
+      width: min(440px, 90vw); margin: 0 auto; text-align: center;
+    }
+    .howtoLine {
+      font-size: clamp(13px, 2.1vw, 17px); line-height: 1.45; font-weight: 500;
+      padding: 6px 0;
+    }
+    /* labels in ROWAY's ice-blue (matching the HOW TO PLAY logo) instead of gold */
+    .howtoLine b {
+      color: #8fd0ff; text-transform: uppercase; letter-spacing: .5px;
+      text-shadow: 0 0 10px rgba(120,190,255,.45);
+    }
+    /* same green as the PERFEKT arrow on the pendulum bar */
+    .howtoLine .greenZone { color: rgb(150,240,165); font-weight: 700; white-space: nowrap; }
+    /* SPACE / arrows / A / D shown as the real keycap art (public/buttons/*.png)
+       inline in the how-to lines instead of styled <kbd> text */
+    .keyBtn {
+      height: 45.6px; width: auto; vertical-align: middle; margin: 0 3px;
+      filter: drop-shadow(0 2px 5px rgba(0,0,0,.5));
+      -webkit-user-drag: none; user-select: none; pointer-events: none;
+    }
+    /* #howtoSpaceKey (how-to screen only): a live not-pressed/pressed toggle
+       instead of the old static space.png — two separate 360x84 stills,
+       public/buttons/space_default.png and space_pressed.png, swapped via
+       background-image (not a sprite-sheet position trick, since these are
+       two independent files rather than stacked frames in one sheet).
+       main.js's demoFrame() drives .pressed in lockstep with the pendulum
+       demo right below it: pressed while charging, released the instant the
+       bob crosses the green centre — matching the real hold-to-charge/
+       release input. */
+    .keyBtn--space {
+      height: 45.6px; aspect-ratio: 360 / 84; display: inline-block;
+      background-image: url('/buttons/space_default.png');
+      background-repeat: no-repeat; background-size: 100% 100%; background-position: center;
+    }
+    .keyBtn--space.pressed { background-image: url('/buttons/space_pressed.png'); }
+    @media (max-width: 640px) {
+      .keyBtn { height: 38.4px; margin: 0 2px; }
+      .keyBtn--space { height: 38.4px; }
+    }
+    /* Touch-mode gates: main.js sets html.touch from live detection (coarse
+       pointer OR touch points OR narrow screen), because pure
+       @media (pointer: coarse) misses real phones behind desktop-reporting
+       webviews/emulators — which silently stripped the whole touch UI and
+       left keyboard-only hints on mobile. The media query stays as a
+       no-JS fallback. */
     .touchOnly { display: none; }
+    html.touch .touchOnly { display: inline; }
+    html.touch .deskOnly { display: none; }
     @media (pointer: coarse) {
       .touchOnly { display: inline; }
       .deskOnly { display: none; }
     }
 
-    /* ---- Mobile touch controls ---- */
+    /* ---- Mobile touch controls ----
+       Steer/row buttons sit right at the bottom edge (thumb reach), with the
+       stroke-meter arc ("ro buen") raised above them — see the html.touch
+       overrides below, which also re-anchor #feedback/#comboBadge by the same
+       delta so their popups still land just above the arc, not the buttons. */
     #touchControls {
-      position: absolute; left: 0; right: 0; bottom: 104px;
+      position: absolute; left: 0; right: 0;
+      bottom: calc(20px + env(safe-area-inset-bottom, 0px));
       display: none; justify-content: space-between; align-items: flex-end;
       padding: 0 16px; pointer-events: none;
     }
@@ -371,85 +927,712 @@
       background: linear-gradient(180deg, #d81a3f, var(--no-red)) !important;
     }
     #rowBtn:active, #steerBtns button:active { filter: brightness(1.35); transform: scale(.94); }
+    html.touch #touchControls.active { display: flex; }
     @media (pointer: coarse) {
       #touchControls.active { display: flex; }
+    }
+    /* raise the arc above the now-lowered touch controls, and carry
+       #feedback/#comboBadge (tuned to sit just above the arc) up by the same
+       +70px delta so their popups keep landing above the arc, not the buttons */
+    html.touch #strokeMeterWrap { bottom: 104px; }
+    html.touch #feedback { bottom: 202px; }
+    html.touch #comboBadge { bottom: 252px; }
+    @media (pointer: coarse) {
+      #strokeMeterWrap { bottom: 104px; }
+      #feedback { bottom: 202px; }
+      #comboBadge { bottom: 252px; }
     }
     kbd {
       display: inline-block; padding: 2px 9px; border-radius: 6px;
       background: rgba(255,255,255,.12); border: 1px solid rgba(255,255,255,.35);
       border-bottom-width: 3px; font-family: inherit; font-weight: 700; font-size: 13px;
     }
+    /* .cta visuals come from the raster wrapper (src/runeButtons.js);
+       this class only carries typography. */
     .cta {
-      margin-top: 8px; font-size: 18px; font-weight: 800; letter-spacing: 3px;
-      color: #fff; padding: 14px 42px; border-radius: 999px; cursor: pointer;
-      background: linear-gradient(180deg, #d81a3f, var(--no-red));
-      border: 1px solid rgba(255,255,255,.4);
-      box-shadow: 0 6px 24px rgba(186,12,47,.5), inset 0 1px 0 rgba(255,255,255,.3);
-      animation: pulse 1.6s ease-in-out infinite;
-      text-transform: uppercase;
+      font-size: 15px; font-weight: 800; letter-spacing: 1.5px;
+      padding: 14px 42px; cursor: pointer; text-transform: uppercase;
     }
-    .cta:hover { filter: brightness(1.15); }
-    @keyframes pulse { 0%,100% { transform: scale(1); } 50% { transform: scale(1.05); } }
 
-    #resultStats { display: flex; gap: 16px; flex-wrap: wrap; justify-content: center; }
-    #resultStats .pill { min-width: 130px; padding: 12px 20px; }
     #resultTitle { font-size: clamp(30px, 6vw, 56px); }
-    #medal { font-size: 60px; line-height: 1; filter: drop-shadow(0 4px 10px rgba(0,0,0,.5)); }
-
-    /* ---- Score + leaderboard ---- */
-    #scoreBox {
-      text-align: center; padding: 10px 34px; border-radius: 14px;
-      background: linear-gradient(180deg, rgba(255,210,94,.16), rgba(255,157,46,.08));
-      border: 1px solid rgba(255,210,94,.45);
-      box-shadow: 0 4px 20px rgba(0,0,0,.3);
+    /* Result redesign: the match result is a small SECONDARY context bar now
+       (placement is the hero — see #placeBanner below) — fully resets the
+       big gradient .title treatment down to one muted line. */
+    #resultTitle.resultTitleSmall {
+      font-size: clamp(13px, 2vw, 17px); font-weight: 700; letter-spacing: 2px;
+      background: none; -webkit-background-clip: initial; background-clip: initial;
+      color: rgba(255,255,255,.78); filter: none; text-shadow: 0 2px 6px rgba(0,0,0,.5);
+      margin-top: 2px; display: inline-block;
+      padding: 7px 20px; border-radius: 999px;
+      border: 1px solid rgba(255,255,255,.22);
+      background-color: rgba(0,0,0,.28);
     }
-    #scoreBox .label { font-size: 10px; letter-spacing: 3px; opacity: .8; }
+    /* Race hides this chip entirely — needs to out-specificity the
+       ID+class rule above (.hiddenMsg alone loses to #resultTitle.resultTitleSmall) */
+    #resultTitle.hiddenMsg { display: none; }
+    /* Row Race: one rotating reward/stat line (perfect bonus, gate penalty,
+       finish time, …) — see startResultTicker()/buildTickerMessages() in
+       main.js. A short fade-in on every message swap, not a jump-cut. */
+    #resultTicker {
+      font-size: 15px; font-weight: 700; letter-spacing: .4px;
+      color: rgba(255,255,255,.9); min-height: 1.3em;
+      display: inline-block; padding: 8px 22px; border-radius: 999px;
+      border: 1px solid rgba(255,255,255,.2); background: rgba(0,0,0,.26);
+    }
+    #resultTicker:empty { display: none; }
+    #resultTicker.tickerIn { animation: tickerFade .45s ease-out; }
+    @keyframes tickerFade {
+      0% { opacity: 0; transform: translateY(4px); }
+      100% { opacity: 1; transform: translateY(0); }
+    }
+    /* ---- Result stat card ----
+       Consolidation pass: one gold-framed plate (same Pattern A dark plate +
+       top diamond finial as the settings/how-to/confirm modals, reused
+       verbatim) replaces the old wall of separate lines (score, breakdown,
+       voyage progress, gate-penalty bar). Placement (#placeBanner) stays the
+       hero headline above the card; everything numeric lives inside it. */
+    #resultCard {
+      position: relative;
+      width: min(380px, 88vw);
+      margin: 6px auto 0;
+      background: linear-gradient(180deg, #17140f, #0a0908);
+      border: 1px solid #b98a3e;
+      border-radius: 10px;
+      box-shadow: 0 0 0 3px rgba(8, 7, 6, .85), 0 0 0 4px rgba(185, 138, 62, .5),
+                  inset 0 0 26px rgba(0, 0, 0, .6);
+      padding: 30px 26px 24px;
+    }
+    #resultCard::before {
+      content: ''; position: absolute; z-index: 2; left: 50%; top: 0;
+      width: 15px; height: 15px; transform: translate(-50%, -50%) rotate(45deg);
+      background: #0d0b09; border: 2px solid #c9973f;
+      box-shadow: 0 0 8px rgba(0, 0, 0, .6);
+    }
+    #resultCard::after {
+      content: ''; position: absolute; z-index: 3; left: 50%; top: 0;
+      width: 5px; height: 5px; transform: translate(-50%, -50%) rotate(45deg);
+      background: #c9973f;
+    }
+    /* the big number + its "Pts" unit, baseline-aligned like a suffix */
+    #resCardScoreRow { display: flex; align-items: baseline; justify-content: center; gap: 8px; }
     #resScore {
-      font-size: clamp(34px, 6vw, 52px); font-weight: 900; line-height: 1.1;
-      color: #ffd25e; text-shadow: 0 0 18px rgba(255,210,94,.5);
-      font-variant-numeric: tabular-nums;
+      font-family: "Marcellus", serif; font-variant-numeric: tabular-nums;
+      font-size: clamp(34px, 8vw, 52px); font-weight: 900; line-height: 1;
+      background: linear-gradient(180deg, #fff6d8 0%, #ffd25e 45%, #e8a318 100%);
+      -webkit-background-clip: text; background-clip: text; color: transparent;
+      filter: drop-shadow(0 3px 12px rgba(255,180,40,.45));
     }
-    #scoreBreakdown { font-size: 11px; opacity: .75; letter-spacing: .5px; margin-top: 2px; }
+    #resCardPtsLabel {
+      font-size: 15px; font-weight: 800; letter-spacing: 1px; text-transform: uppercase;
+      color: #ffd25e; opacity: .85;
+    }
+    /* thin full-width divider with a small diamond centred on it */
+    #resCardDivider {
+      position: relative; width: 100%; height: 1px; margin: 18px 0 16px;
+      background: linear-gradient(90deg, transparent, rgba(185,138,62,.65) 50%, transparent);
+    }
+    #resCardDivider::before {
+      content: ''; position: absolute; top: 50%; left: 50%;
+      width: 6px; height: 6px; transform: translate(-50%, -50%) rotate(45deg);
+      background: #c9973f;
+    }
+    /* TIME / RANK / BALLS row, split by thin gold rules */
+    #resCardStatsRow { display: flex; justify-content: center; align-items: stretch; }
+    .resCardStat { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 4px; }
+    .resCardStat + .resCardStat { border-left: 1px solid rgba(185,138,62,.35); }
+    /* every ball on the course caught — the value turns gold */
+    #resBalls.allBalls { color: #ffd25e; text-shadow: 0 0 12px rgba(255,210,94,.55); }
+    .resCardStatLabel {
+      font-size: 12px; font-weight: 800; letter-spacing: 1.5px; text-transform: uppercase;
+      color: #8fd0ff; text-shadow: 0 0 8px rgba(120,190,255,.4);
+    }
+    .resCardStatValue {
+      font-family: "Marcellus", serif; font-variant-numeric: tabular-nums;
+      font-size: clamp(19px, 4vw, 24px); font-weight: 800; color: #fff;
+      text-shadow: 0 2px 6px rgba(0,0,0,.5);
+    }
+    /* "NEW BEST TIME!" badge — small gold-bordered pill, now INSIDE the stat
+       card (sits above the points number) rather than floating below the
+       frame, so it reads as part of the card's own content. Shown only on
+       an actual personal record (see isRecord/isStageBest in main.js). */
+    #newBestBadge {
+      display: inline-flex; align-items: center; gap: 10px;
+      font-size: 13px; font-weight: 800; letter-spacing: .6px; text-transform: uppercase;
+      color: #ffd25e; text-shadow: 0 0 10px rgba(255,210,94,.4);
+      padding: 8px 20px; border-radius: 999px;
+      border: 1px solid rgba(255,211,106,.55); background: rgba(0,0,0,.28);
+      margin: 0 0 14px;
+    }
+    #newBestBadge::before, #newBestBadge::after { content: '❖'; font-size: 10px; opacity: .8; }
+    #newBestBadge.hiddenMsg { display: none; }
+    /* the stage NAME (e.g. "OUT OF THE FJORD") — a small pill-style line
+       above the big "COMPLETED" headline, same treatment as the trimmed
+       #resultTitle.resultTitleSmall pill below, just ice-blue like the
+       how-to screen's labels so it reads as visually secondary to the hero */
+    #stageNameBanner {
+      display: inline-block;
+      font-size: clamp(13px, 2vw, 17px); font-weight: 700; letter-spacing: 2px;
+      text-transform: uppercase; color: #8fd0ff; text-shadow: 0 0 10px rgba(120,190,255,.4);
+      padding: 7px 20px; border-radius: 999px;
+      border: 1px solid rgba(143,208,255,.35); background-color: rgba(0,0,0,.28);
+    }
+    #stageNameBanner.hiddenMsg { display: none; }
+    /* Fase 3e: which voyage stage this run was played on — a small secondary
+       line, ice-blue like the how-to screen's labels (the stage NAME itself
+       now lives in #stageNameBanner above the headline; this only carries
+       the per-stage rank + the stage-5 one-shot caveat) */
+    #stageContext {
+      font-size: 14px; font-weight: 700; letter-spacing: .3px;
+      color: #8fd0ff; text-shadow: 0 0 10px rgba(120,190,255,.4);
+    }
+    .milestoneBanner {
+      font-size: 16px; font-weight: 900; letter-spacing: 1px; color: #ffd25e;
+      text-shadow: 0 0 14px rgba(255,210,94,.5); text-align: center; margin: 4px auto 0;
+      /* no max-width meant this could render as ONE long line wider than a
+         narrow viewport — flex align-items:center still centers the box
+         itself, but body's hard overflow:hidden then clips it asymmetrically,
+         reading as "stuck to the left" instead of centered. Capping the width
+         forces it to wrap onto multiple lines instead (text-align above
+         keeps each wrapped line centered). */
+      max-width: min(90vw, 620px);
+      animation: milestonePop .5s ease-out;
+    }
+    @keyframes milestonePop {
+      0% { opacity: 0; transform: scale(.7); }
+      60% { opacity: 1; transform: scale(1.08); }
+      100% { opacity: 1; transform: scale(1); }
+    }
+    /* the trophy milestone is the narrative turning point — bigger than the
+       usual "DU PASSERTE ..." banner. Two lines (main.js splits at a <br>
+       before the dash) — explicit font-family since Cinzel at this heavy
+       900 weight reads different enough from its lighter uses elsewhere
+       that it's worth pinning down rather than leaning on inheritance. */
+    .milestoneBannerTrophy {
+      font-family: "Cinzel", "Avenir Next", "Segoe UI", system-ui, serif;
+      font-size: clamp(18px, 3.2vw, 24px); line-height: 1.4; margin-top: 8px;
+      text-shadow: 0 0 20px rgba(255,210,94,.7), 0 2px 8px rgba(0,0,0,.6);
+    }
+    /* the stage-5 bridge screen's trophy banner (#interludeTrophyBanner) is
+       pulled out of .interludeTop's flex flow and centred on the FULL card
+       height instead — the moment "you're carrying the trophy" deserves the
+       middle of the screen, not a spot up near the map art. .interludeCard
+       is position:absolute;inset:0 (Fase 3e above), so it's the containing
+       block for this. Centred via inset:0 + margin:auto (NOT a
+       top:50%/left:50% + translate(-50%,-50%) transform) — milestonePop
+       already animates `transform` for its scale-pop, and a CSS animation
+       replaces that property wholesale each frame, so a translate baked into
+       a static transform would get clobbered the instant the animation
+       starts (and again once it ends, since animation-fill-mode defaults to
+       "none" and the transform reverts). Sizing with inset:0 + an explicit
+       width + margin:auto is the one centering method with no transform
+       dependency, so it can't collide with the animation either way. */
+    #interludeTrophyBanner {
+      position: absolute; inset: 0; margin: auto; z-index: 4;
+      width: min(90vw, 620px); height: max-content;
+    }
 
-    #saveRow { display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; }
-    #aliasInput {
-      padding: 12px 16px; border-radius: 10px; font-size: 15px; font-weight: 600;
-      font-family: inherit; color: #fff; width: 210px; text-align: center;
-      background: rgba(0, 20, 60, .75); border: 1px solid rgba(255,255,255,.35);
+    /* ================= Atlanterhavsferden voyage map v2 =================
+       Real asset package (public/roway_map_dev_package) mounted by
+       src/map/voyageMap.js into #voyageMapWrap. Canvas is 1448x1086 (4:3);
+       every child layer is positioned in % of that canvas — never px — so
+       it stays pixel-accurate to the manifest at any container size. */
+    /* the generic .screen background is a vignette that's LIGHTEST in the
+       centre (see .screen above) — backwards for a map that needs its
+       centre to read cleanly over the live 3D scene. This overrides it with
+       a scrim that's darkest in the middle and lets the live scene bleed
+       through faintly only at the far edges (the intended cinematic look). */
+    #voyageScreen {
+      background: radial-gradient(ellipse 70% 65% at 50% 45%, rgba(0,0,0,.85) 0%, rgba(0,0,0,.8) 55%, rgba(0,0,0,.5) 100%);
+    }
+    #voyageMapWrap {
+      position: relative; width: min(920px, 92vw);
+      aspect-ratio: 1448 / 1086;
+      max-height: min(78vh, 78dvh); /* portrait phones letterbox instead of overflowing */
+      max-width: calc(min(78vh, 78dvh) * 1448 / 1086);
+      filter: drop-shadow(0 10px 30px rgba(0,0,0,.5));
+    }
+    /* stage card: public/stage_maps/N.png (clean map art, no baked-in text)
+       full-bleed (edge to edge, as large as possible) with the title/badge/
+       buttons floating over it — see the .stage-card-mode overrides below.
+       public/stage_maps/stageN.png (ship + "STAGE N/5" badge, transparent)
+       floats above the button row. */
+    #voyageStageCardWrap {
+      position: relative; width: min(920px, 92vw);
+      aspect-ratio: 1920 / 1200;
+      max-height: min(78vh, 78dvh);
+      max-width: calc(min(78vh, 78dvh) * 1920 / 1200);
+      border-radius: 12px; overflow: hidden;
+      filter: drop-shadow(0 10px 30px rgba(0,0,0,.5));
+      /* pillarbox fill: everything the centred .mapVideoBox doesn't cover
+         is plain black — never a stretched/distorted map */
+      background: #000;
+    }
+    /* Stage map v3 — shared video loop + per-stage route overlay.
+       Source video AND overlay PNGs are all 1080x1920. The visible window
+       crops 10% off the top and 10% off the bottom of the source (dead
+       zone), leaving the middle 80%: 1080x1536. All the crop math is in
+       percentages of the box, so it holds at any viewport size:
+         - the box's aspect-ratio IS the cropped source aspect (1080/1536)
+         - media height 125% = full source height (1920/1536)
+         - media top -12.5% = the hidden top strip (192/1536)
+       Video and overlay get identical geometry from the same two rules, so
+       they can never drift out of alignment. The box fills the wrapper's
+       height and centres horizontally; the wrapper paints #000 behind it,
+       which is what produces the black pillarbox columns on wide screens
+       (and never any stretching — width always derives from the locked
+       aspect-ratio). */
+    .mapVideoBox {
+      position: absolute; top: 0; bottom: 0; left: 50%;
+      transform: translateX(-50%);
+      aspect-ratio: 1080 / 1536;
+      overflow: hidden;
+    }
+    .mapVideoBox .mapVideo, .mapVideoBox .mapOverlay {
+      position: absolute; left: 0; width: 100%;
+      top: -12.5%; height: 125%;
+      display: block; border: 0;
+    }
+    .mapVideoBox .mapVideo { z-index: 1; object-fit: fill; } /* box math already guarantees the exact source aspect */
+    .mapVideoBox .mapOverlay { z-index: 2; pointer-events: none; user-select: none; -webkit-user-drag: none; }
+    .stageBadgeImg {
+      display: block; width: 45.6%; max-width: 204px;
+      pointer-events: none; user-select: none; -webkit-user-drag: none;
+    }
+    /* soft fade-in when a stage image swaps (main.js sets src, then adds
+       .loaded once it actually decodes) — reuses the .screen opacity-
+       transition pattern rather than new animation infrastructure */
+    .stageFadeImg { opacity: 0; transition: opacity .25s ease; }
+    .stageFadeImg.loaded { opacity: 1; }
+    #voyageScreen.stage-card-mode { padding: 0; }
+    #voyageScreen.stage-card-mode #voyageStageCardWrap {
+      position: absolute; inset: 0; width: 100%; height: 100%;
+      max-width: none; max-height: none; aspect-ratio: auto; border-radius: 0;
+      filter: none; z-index: 0;
+    }
+    /* voyage-complete: same full-bleed footprint as the stage card above,
+       just a plain photo instead of the video+overlay stack — only ever
+       shown inside stage-card-mode (see openVoyageScreen() in main.js) */
+    #voyageDoneWrap {
+      position: absolute; inset: 0; width: 100%; height: 100%; z-index: 0;
+      overflow: hidden; background: #000;
+    }
+    #voyageDoneWrap img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+    /* sits right above the button group rather than at the top, where it
+       used to collide with the CONTROLS pill. The group is the ALWAYS-STACKED
+       column now: on the stage card that's ROW! + BACK (~44+50 + 12 gap),
+       pinned to bottom:24 — 24+130+16px gap ≈ 170px */
+    #voyageScreen.stage-card-mode #voyageScreenTitle {
+      position: absolute; bottom: 170px; left: 0; right: 0; z-index: 2; margin: 0;
+      background: linear-gradient(180deg, #eaf6ff 0%, #bfe3fb 30%, #4f9fe0 65%, #1f5c9e 100%);
+      -webkit-background-clip: text; background-clip: text; color: transparent;
+    }
+    /* the "voyage complete" message reads as body copy, not a stage-name
+       headline — same formatting as .introText on the splash screen (sentence
+       case, ~50% smaller, two lines) instead of the big uppercase gradient.
+       Needs to out-specificity the stage-card-mode gradient rule above.
+       Bottom offset is taller than the default #voyageScreenTitle rule above:
+       this screen's buttons are the STACKED splash layout — THREE full-width
+       buttons + 2×12px gaps, ~206px tall — instead of one side-by-side row
+       (~70px), so it needs more clearance to sit right above them, not
+       overlapping — 24 (menuBtns bottom) + 206 (stack height) + 16 (gap). */
+    #voyageScreen.stage-card-mode #voyageScreenTitle.voyageDoneMsg {
+      bottom: 246px;
+      font-family: "Marcellus", serif;
+      font-size: clamp(15px, 2.4vw, 20px); font-weight: 500; line-height: 1.5;
+      letter-spacing: normal; text-transform: none; opacity: .95;
+      background: none; -webkit-background-clip: initial; background-clip: initial;
+      color: #fff; filter: none;
+      max-width: 520px; margin-left: auto; margin-right: auto;
+    }
+    #voyageScreen.stage-card-mode .stageBadgeImg {
+      position: absolute; left: 50%; top: 72px; z-index: 3; /* above the ::before/::after scrims (z 1) */
+      transform: translateX(-50%);
+    }
+    /* voyage-complete header wordmark — same top slot as the stage badge
+       above (they're never shown together), just wider since it carries the
+       whole headline instead of a small ship badge */
+    #voyageScreen.stage-card-mode #voyageDoneHeaderImg {
+      position: absolute; left: 50%; top: 56px; z-index: 3;
+      transform: translateX(-50%);
+      width: min(42%, 276px); pointer-events: none; user-select: none; -webkit-user-drag: none;
+    }
+    /* voyage-complete stats row: place/time/score, sitting between the header
+       wordmark and the title/buttons — same pill language as #resultTicker */
+    /* :not(.hiddenMsg) so the display:flex here (2-ID specificity) never
+       beats .hiddenMsg's display:none when this screen is in its non-done
+       (stage-card) state — a plain #voyageScreen.stage-card-mode
+       #voyageDoneStats rule would win over .hiddenMsg regardless of the
+       class, since two IDs out-specificity one class. */
+    #voyageScreen.stage-card-mode #voyageDoneStats:not(.hiddenMsg) {
+      position: absolute; left: 0; right: 0; top: 148px; z-index: 3;
+      display: flex; justify-content: center; gap: 10px; padding: 0 16px;
+    }
+    .voyageDoneStat {
+      display: flex; flex-direction: column; align-items: center; gap: 2px;
+      padding: 10px 18px; border-radius: 14px;
+      background: rgba(0,0,0,.32); border: 1px solid rgba(255,255,255,.2);
+      backdrop-filter: blur(2px);
+    }
+    .voyageDoneStatValue {
+      font-family: "Marcellus", serif; font-variant-numeric: tabular-nums;
+      font-size: clamp(16px, 3.4vw, 22px); font-weight: 900; line-height: 1.1;
+      background: linear-gradient(180deg, #fff6d8 0%, #ffd25e 45%, #e8a318 100%);
+      -webkit-background-clip: text; background-clip: text; color: transparent;
+      filter: drop-shadow(0 2px 8px rgba(255,180,40,.4));
+    }
+    .voyageDoneStatLabel {
+      font-size: 10px; font-weight: 800; letter-spacing: 1px; text-transform: uppercase;
+      color: #8fd0ff; text-shadow: 0 0 8px rgba(120,190,255,.4);
+    }
+    /* ---- Voyage Complete finale entrance: staggered fade/zoom/pop-in the
+       moment the screen appears — same idiom as #stageChapter's chapterCard
+       keyframe (opacity+translate+scale, self-terminating, Regel 9), just
+       three elements staggered instead of one. main.js's
+       playVoyageDoneEntrance() removes+reflows+re-adds .voyageDoneAnim on
+       every entry, so replaying the voyage (Start New Voyage → finish again)
+       gets a fresh play instead of a stale end-state. ~1s total: photo zoom
+       first, wordmark pops in next, stats row slides up last. ---- */
+    #voyageDoneImg.voyageDoneAnim { animation: voyageDonePhotoIn .9s cubic-bezier(.22,1,.36,1) both; }
+    @keyframes voyageDonePhotoIn {
+      0%   { opacity: 0; transform: scale(1.1); }
+      100% { opacity: 1; transform: scale(1); }
+    }
+    /* keeps the base rule's translateX(-50%) centering in every step —
+       the animation shorthand overrides transform outright, so dropping it
+       here would snap the wordmark to the left edge for the animation's
+       duration */
+    #voyageScreen.stage-card-mode #voyageDoneHeaderImg.voyageDoneAnim {
+      animation: voyageDoneHeaderIn .6s cubic-bezier(.22,1,.36,1) .18s both;
+    }
+    @keyframes voyageDoneHeaderIn {
+      0%   { opacity: 0; transform: translateX(-50%) translateY(-10px) scale(.88); }
+      70%  { opacity: 1; transform: translateX(-50%) translateY(2px) scale(1.04); }
+      100% { opacity: 1; transform: translateX(-50%) translateY(0) scale(1); }
+    }
+    #voyageDoneStats.voyageDoneAnim { animation: voyageDoneStatsIn .55s cubic-bezier(.22,1,.36,1) .38s both; }
+    @keyframes voyageDoneStatsIn {
+      0%   { opacity: 0; transform: translateY(16px); }
+      100% { opacity: 1; transform: translateY(0); }
+    }
+    /* ---- Voyage Complete ambient dust ---- */
+    /* small glowing motes drifting over the trophy photo — continuous and
+       looping (animation-iteration-count:infinite), unlike .confetti's
+       one-shot fall. Spawned/cleared by spawnVoyageDust()/stopVoyageDust()
+       in main.js, appended into #voyageDoneWrap — already position:absolute
+       + overflow:hidden and full-bleed over this one screen (see
+       #confettiLayer's comment above for the class of scrollbar bug that
+       overflowing travel can cause; keeping every mote's drift within this
+       already-clipped box avoids it without needing a new fixed layer). */
+    .voyageDust {
+      position: absolute;
+      border-radius: 50%;
+      background: radial-gradient(circle, rgba(255,240,200,.95) 0%, rgba(255,210,94,.55) 45%, rgba(255,210,94,0) 75%);
+      pointer-events: none;
+      opacity: 0;
+      will-change: transform, opacity;
+      animation-name: voyageDustFloat;
+      animation-timing-function: ease-in-out;
+      animation-iteration-count: infinite;
+    }
+    @keyframes voyageDustFloat {
+      0%   { opacity: 0; transform: translate(0, 0) scale(.6); }
+      15%  { opacity: .85; }
+      50%  { opacity: .5; transform: translate(6px, -22px) scale(1); }
+      85%  { opacity: .85; }
+      100% { opacity: 0; transform: translate(-4px, -40px) scale(.6); }
+    }
+    /* the badge is a sibling of the (hidden) card wrap — outside card mode
+       there is no stage map, so no badge either */
+    #voyageScreen:not(.stage-card-mode) #voyageStageBadgeImg { display: none; }
+    #voyageScreen.stage-card-mode .menuBtns {
+      position: absolute; bottom: 24px; left: 0; right: 0; z-index: 2;
+      padding-bottom: env(safe-area-inset-bottom, 0px);
+    }
+    #voyageScreen.stage-card-mode::before, #voyageScreen.stage-card-mode::after {
+      content: ''; position: absolute; left: 0; right: 0; z-index: 1; pointer-events: none;
+    }
+    #voyageScreen.stage-card-mode::before { top: 0; height: 25%; background: linear-gradient(180deg, rgba(0,0,0,.7), transparent); }
+    #voyageScreen.stage-card-mode::after { bottom: 0; height: 30%; background: linear-gradient(0deg, rgba(0,0,0,.8), transparent); }
+    .vm-layer { position: absolute; inset: 0; width: 100%; height: 100%; }
+    /* fades all the way to transparent at the edge on purpose — a solid
+       colour stop there would draw a visible rectangular seam where this
+       container meets the .screen's own (differently-shaped) veil behind it */
+    /* flat scrim colour + a separate alpha mask for the edge falloff — more
+       predictable than fighting radial-gradient's box-relative percentages
+       to get a clean feather right at the container edge */
+    .vm-scrim {
+      background: rgba(9, 20, 32, .74);
+      -webkit-mask-image: radial-gradient(ellipse 78% 82% at 50% 45%, #000 65%, transparent 100%);
+      mask-image: radial-gradient(ellipse 78% 82% at 50% 45%, #000 65%, transparent 100%);
+    }
+    .vm-bg { object-fit: cover; opacity: .5; }
+    .vm-route-svg, .vm-progress-svg { overflow: visible; }
+    .vm-sprites { pointer-events: none; } /* individual sprites re-enable it */
+    .vm-sprite {
+      position: absolute; display: block; pointer-events: none;
+      filter: drop-shadow(0 4px 10px rgba(0,0,0,.45));
+    }
+    .vm-sprite--interactive {
+      pointer-events: auto; cursor: pointer;
+      transition: transform .18s cubic-bezier(.34,1.56,.64,1), filter .18s ease;
+    }
+    .vm-sprite--interactive:hover, .vm-sprite--interactive:focus-visible {
+      transform: scale(1.06);
+      filter: drop-shadow(0 4px 10px rgba(0,0,0,.45)) drop-shadow(var(--glow));
       outline: none;
     }
-    #aliasInput:focus { border-color: #ffd25e; box-shadow: 0 0 12px rgba(255,210,94,.35); }
-    #aliasInput::placeholder { color: rgba(255,255,255,.45); }
-    #saveScoreBtn {
-      padding: 12px 22px; border-radius: 10px; font-size: 13px; font-weight: 800;
-      letter-spacing: 1px; font-family: inherit; color: #fff; cursor: pointer;
-      background: linear-gradient(180deg, #d81a3f, var(--no-red));
-      border: 1px solid rgba(255,255,255,.4); text-transform: uppercase;
+    .vm-sprite--current {
+      filter: drop-shadow(0 4px 10px rgba(0,0,0,.45)) drop-shadow(0 0 20px rgba(255,211,106,.85));
     }
-    #saveScoreBtn:hover { filter: brightness(1.15); }
+    .vm-checkpoint {
+      pointer-events: auto; cursor: pointer; fill: transparent; stroke: transparent;
+    }
+    .vm-footer {
+      position: absolute; left: 50%; bottom: 2%; transform: translateX(-50%);
+      width: 92%; text-align: center; color: #fff;
+      font-size: clamp(12px, 1.6vw, 15px); letter-spacing: .3px;
+      text-shadow: 0 2px 6px rgba(0,0,0,.7);
+    }
+    .vm-smoke { object-fit: cover; pointer-events: none; opacity: .6; mix-blend-mode: screen; }
+    /* marching ants on the ACTIVE segment only — the base/locked strokes stay static */
+    .vm-route-active { stroke-dashoffset: 0; animation: vmMarch 1.1s linear infinite; }
+    @keyframes vmMarch { to { stroke-dashoffset: -32; } }
+    .vm-progress-active-line { transition: stroke-dasharray .4s ease-out; }
+    @media (prefers-reduced-motion: reduce) {
+      .vm-route-active { animation: none; }
+      .vm-smoke { display: none; }
+    }
+    @media (max-width: 640px) {
+      #voyageMapWrap { width: 96vw; max-height: 62vh; max-width: calc(62vh * 1448 / 1086); }
+    }
+
+    /* Fase 3e: etappe-mellomsteg — full-bleed stage card image (public/
+       stage_maps/N.png, clean map art) filling the whole screen, with the
+       copy/badge/buttons floating over it (top/bottom scrims for
+       legibility). public/stage_maps/stageN.png (ship + "STAGE N/5" badge,
+       transparent) floats just above the button row. */
+    .interludeCard {
+      position: absolute; inset: 0; width: 100%; height: 100%;
+      display: flex; flex-direction: column; justify-content: space-between; align-items: center;
+      padding: 24px 24px calc(24px + env(safe-area-inset-bottom, 0px));
+    }
+    .interludeCard::before, .interludeCard::after {
+      content: ''; position: absolute; left: 0; right: 0; z-index: 1; pointer-events: none;
+    }
+    .interludeCard::before { top: 0; height: 30%; background: linear-gradient(180deg, rgba(0,0,0,.75), transparent); }
+    .interludeCard::after { bottom: 0; height: 45%; background: linear-gradient(0deg, rgba(0,0,0,.85), transparent); }
+    .interludeTop, .interludeBottom {
+      position: relative; z-index: 2;
+      display: flex; flex-direction: column; align-items: center; gap: 10px;
+    }
+    .interludeDone { display: flex; flex-direction: column; align-items: center; gap: 4px; }
+    .interludeDoneIcon { font-size: 34px; animation: milestonePop .5s ease-out; }
+    .interludeDoneText {
+      font-size: 15px; font-weight: 900; letter-spacing: .5px; color: #ffd25e;
+      text-shadow: 0 0 14px rgba(255,210,94,.5);
+    }
+    /* Stage map v3: same video+overlay stack as #voyageStageCardWrap —
+       fullscreen black layer (inset:0 inside the fixed-position body tracks
+       the DYNAMIC viewport, i.e. the 100dvh behaviour, so a mobile address
+       bar showing/hiding never breaks the layout) with the cropped map box
+       centred by .mapVideoBox. */
+    .interludeMapWrap {
+      position: absolute; inset: 0; width: 100%; height: 100%; z-index: 0;
+      background: #000;
+    }
+    .interludeCard .stageBadgeImg {
+      position: absolute; left: 50%; top: 72px; z-index: 3; /* above the ::before/::after scrims (z 1) */
+      transform: translateX(-50%);
+    }
+    .interludeNext { display: flex; flex-direction: column; align-items: center; gap: 2px; }
+    .interludeNextLabel { font-size: 16px; font-weight: 900; letter-spacing: .5px; }
+    .interludeNextLandmark { font-size: 14px; opacity: .85; }
+    .interludeBottom #interludeGoBtn { min-height: 44px; }
+
+    /* Fase 4a: missions screen */
+    #missionsList { display: flex; flex-direction: column; gap: 10px; width: min(480px, 90vw); }
+    .missionRow {
+      background: rgba(0, 20, 60, .65); border: 1px solid rgba(255,255,255,.22);
+      border-radius: 12px; padding: 12px 16px; text-align: left;
+      display: flex; justify-content: space-between; align-items: center; gap: 12px;
+      font-size: 14px; line-height: 1.4;
+    }
+    .missionRow .missionProgress { color: #ffd25e; font-weight: 800; white-space: nowrap; }
+    #letterStatus {
+      font-size: 22px; font-weight: 900; letter-spacing: 5px; color: #ffd25e;
+      text-shadow: 0 0 14px rgba(255,210,94,.5); margin-top: 6px;
+    }
+
+    /* visually hidden but still reachable by screen readers/keyboard nav —
+       used for the aliasInput's real <label> (the placeholder alone isn't
+       an accessible name) */
+    .srOnly {
+      position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
+      overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; border: 0;
+    }
+    /* Leaderboard name-entry — celebratory but compact; sits directly under
+       the score/bonus block, same visual budget as one more result line, not
+       a separate "form screen". Never wider than the .menuBtns group below
+       it (matches its max-width so the whole result column stays one clean
+       vertical line). */
+    #lbNameHeadline {
+      font-family: "Marcellus", serif;
+      font-size: clamp(17px, 3vw, 22px); font-weight: 900; letter-spacing: .5px;
+      color: #ffd25e; text-shadow: 0 0 12px rgba(255,210,94,.45);
+      text-transform: uppercase; margin-top: 4px;
+    }
+    #lbNameSubtext {
+      font-family: "Cinzel", serif;
+      font-size: 13px; font-weight: 600; letter-spacing: .3px;
+      color: rgba(255,255,255,.72); margin-top: -6px;
+    }
+    /* input and Claim button stacked — one clear step-1 column, not a
+       side-by-side form row */
+    #saveRow {
+      display: flex; flex-direction: column; align-items: center; gap: 10px;
+      /* same width formula as .menuBtns--stack (the splash screen's ROW RACE /
+         BRING HOME THE TROPHY column) — the input/Claim button read as the
+         same "width class" of control as the rest of the game's CTAs */
+      width: min(360px, 84vw); margin: 4px auto 0;
+    }
+    #saveRow #aliasInput, #saveRow #saveScoreBtn { width: 100%; }
+    /* #saveScoreBtn's own width above only sizes the inner label — the
+       raster-btn wrapper enhanceRuneButtons() puts around it is an
+       inline-grid that shrinks to fit its text by default (see .raster-btn),
+       which is what made the button read narrower than the input above it.
+       Stretch the wrapper itself to match; the grid's middle "1fr" column
+       (see .raster-btn) absorbs the extra width, so the end caps stay their
+       normal size — no art stretching. */
+    #saveRow .raster-btn { width: 100%; }
+    /* dark navy field, thin gold border, soft inner shadow — reads as an
+       engraved rune-tablet slot rather than a generic web input */
+    #aliasInput {
+      padding: 12px 16px; font-size: 15px; font-weight: 700;
+      font-family: inherit; color: #fff6d8; text-align: center;
+      text-transform: uppercase; letter-spacing: 1px;
+      background: linear-gradient(180deg, rgba(6,14,24,.92), rgba(10,20,32,.92));
+      border: 1px solid var(--gold-deep, #D6A145); border-radius: 8px;
+      box-shadow: inset 0 2px 6px rgba(0,0,0,.55), inset 0 0 0 1px rgba(0,0,0,.3);
+      outline: none; min-height: 44px; box-sizing: border-box;
+      transition: box-shadow .18s ease, border-color .18s ease;
+    }
+    #aliasInput:focus {
+      border-color: var(--gold, #FFD36A);
+      box-shadow: inset 0 2px 6px rgba(0,0,0,.55), 0 0 0 3px rgba(255, 211, 106, .28), 0 0 14px rgba(255,211,106,.35);
+    }
+    #aliasInput::placeholder { color: rgba(255,246,216,.4); text-transform: uppercase; }
+    #saveScoreBtn {
+      padding: 12px 22px; font-size: 13px; font-weight: 800;
+      letter-spacing: 1px; font-family: inherit; color: #fff; cursor: pointer;
+      text-transform: uppercase; min-height: 44px; box-sizing: border-box;
+    }
+    #saveScoreBtn:disabled { opacity: .5; cursor: not-allowed; }
+    /* reserved space so the error line appearing/disappearing never shifts
+       the buttons below it */
+    #lbNameError {
+      font-size: 12px; font-weight: 700; color: #ff9d9d; letter-spacing: .3px;
+      min-height: 16px; margin-top: 2px;
+    }
+    #lbNameError:empty { visibility: hidden; }
+    /* sits directly under the Claim button (+ reserved error space) — a
+       small, clearly-secondary step, not a peer action beside it */
+    #skipSaveBtn { min-height: 44px; box-sizing: border-box; display: inline-flex; align-items: center; margin-top: -2px; }
+    /* quiet, clearly secondary vs. the gold "claim your place" primary action */
+    button#skipSaveBtn.linkBtn { opacity: .6; }
+    button#skipSaveBtn.linkBtn:hover { opacity: .85; }
+    /* short fade/slide for the name-entry -> confirmation handoff */
+    .lbFadeIn { animation: lbFadeIn .28s ease-out; }
+    @keyframes lbFadeIn {
+      0% { opacity: 0; transform: translateY(6px); }
+      100% { opacity: 1; transform: translateY(0); }
+    }
+    /* the name-entry step fades OUT first; only once that's done does the
+       confirmation/buttons fade in (see setResultNameState() in main.js) */
+    .lbFadeOut { transition: opacity .2s ease-in; opacity: 0; }
     .hiddenMsg { display: none; }
+    /* Result redesign: placement is the reward, not the match score — this is
+       now the single LARGEST, most dominant element on the whole screen. Gold
+       gradient text (richer than a flat fill) + a soft warm glow read as
+       "premium trophy moment"; the flanking ❖ marks stand in for laurel/
+       victory ornaments without needing a new art asset. */
     #placeBanner {
-      font-size: clamp(18px, 3.4vw, 28px); font-weight: 900; letter-spacing: 2px;
-      color: #ffd25e; text-shadow: 0 0 16px rgba(255,210,94,.55), 0 2px 8px rgba(0,0,0,.6);
-      text-transform: uppercase;
+      position: relative;
+      font-size: clamp(42px, 9vw, 84px); font-weight: 900; letter-spacing: 1px;
+      line-height: 1.02; text-transform: uppercase;
+      background: linear-gradient(180deg, #fff6d8 0%, #ffd25e 45%, #e8a318 100%);
+      -webkit-background-clip: text; background-clip: text; color: transparent;
+      filter: drop-shadow(0 6px 22px rgba(255,180,40,.55)) drop-shadow(0 2px 8px rgba(0,0,0,.6));
+      margin-top: 6px;
+      display: flex; align-items: center; justify-content: center; gap: 16px;
     }
     #placeBanner:empty { display: none; }
-    .linkBtn {
-      background: none; border: none; color: rgba(255,255,255,.55);
-      font-family: inherit; font-size: 12px; letter-spacing: 1px;
-      text-decoration: underline; cursor: pointer; padding: 2px 8px;
+    #placeBanner::before, #placeBanner::after {
+      content: '❖'; font-size: 0.26em; color: #ffd25e; -webkit-text-fill-color: #ffd25e;
     }
-    .linkBtn:hover { color: rgba(255,255,255,.9); }
-    #savedMsg { font-size: 14px; font-weight: 700; color: #7dff9e; letter-spacing: 1px; }
+    /* REISEN combined-time rank: now just a quiet caveat line under the card
+       (the actual rank number lives in the card's RANK stat) — shown only
+       while that number is still pending a server round-trip (offline/queued). */
+    #voyageRankBanner {
+      font-size: 12px; font-weight: 700; letter-spacing: .3px;
+      color: rgba(143,208,255,.8);
+    }
+    /* Fase 2: duel outcome card (challenge links) — no panel, same plain-text-
+       over-the-scene language as the rest of this screen */
+    #duelCard {
+      display: flex; flex-direction: column; align-items: center; gap: 10px;
+    }
+    /* .hiddenMsg is a class selector (specificity 10); #duelCard's own
+       display:flex above is an ID selector (specificity 100) and would
+       otherwise always win and keep the card visible — this override restores
+       the hide */
+    #duelCard.hiddenMsg { display: none; }
+    #duelResult {
+      font-family: "Marcellus", serif;
+      font-size: clamp(16px, 3vw, 22px); font-weight: 900; letter-spacing: 1px;
+      color: #ffd25e; text-align: center; text-shadow: 0 0 14px rgba(255,210,94,.4);
+      display: flex; align-items: center; justify-content: center; gap: 12px;
+    }
+    /* small flanking rules either side of the celebratory duel line — a plain
+       thin line does the same "ornamental flourish" job as the reference
+       image's feather marks, no new art asset needed */
+    #duelResult::before, #duelResult::after {
+      content: ''; width: 28px; height: 1px;
+      background: linear-gradient(90deg, transparent, rgba(255,210,94,.7));
+    }
+    #duelResult::after { background: linear-gradient(90deg, rgba(255,210,94,.7), transparent); }
+    #challengeMsg {
+      font-size: 13px; font-weight: 700; color: #ffd25e; letter-spacing: .5px; text-align: center;
+    }
+    .linkBtn {
+      font-family: inherit; font-size: 12px; font-weight: 800; letter-spacing: 1px;
+      cursor: pointer; padding: 8px 18px; text-transform: uppercase;
+      display: inline-block;
+    }
+    #savedMsg { font-size: 14px; font-weight: 700; color: #ffd25e; letter-spacing: 1px; }
     #savedMsg.show { display: block; }
 
     .lbWrap { width: min(400px, 84vw); }
-    .lbTitle { font-size: 12px; letter-spacing: 3px; opacity: .85; margin-bottom: 6px; text-align: center; }
+    .lbTitle { font-size: 17px; font-weight: 700; letter-spacing: 2.5px; opacity: .85; margin-bottom: 6px; text-align: center; }
     .lbList {
       list-style: none; counter-reset: lb; max-height: 26vh; overflow-y: auto;
       background: rgba(0, 20, 60, .55); border: 1px solid rgba(255,255,255,.2);
       border-radius: 12px; padding: 6px 0;
+      /* boards hold the FULL server list now — a visible (but quiet) themed
+         scrollbar signals there's more to scroll through */
+      scrollbar-width: thin; scrollbar-color: rgba(143,208,255,.4) transparent;
     }
+    .lbList::-webkit-scrollbar { width: 6px; }
+    .lbList::-webkit-scrollbar-thumb { background: rgba(143,208,255,.35); border-radius: 3px; }
+    .lbList::-webkit-scrollbar-track { background: transparent; }
+    /* the post-voyage board is the celebratory endpoint of a 5-stage journey —
+       give it more room than the compact daily top-list */
+    #resultScreen #voyageLeaderboard { max-height: min(38vh, 380px); }
+    /* Result-screen boards now share the leaderboard modal's gold-framed
+       panel look (see the #lbScreen block below, whose selectors are
+       extended to #resultScreen too) — same board, same badges, same
+       gold self-row pill. Only the little heading above each board keeps
+       its own accent color here. */
+    #resultScreen .lbTitle { color: #8fd0ff; text-shadow: 0 0 10px rgba(120,190,255,.4); opacity: 1; }
     .lbList li {
       counter-increment: lb;
       display: flex; align-items: baseline; gap: 10px;
@@ -471,17 +1654,174 @@
     }
     .lbList li.empty { justify-content: center; opacity: .55; font-weight: 500; }
     .lbList li.empty::before { content: ""; width: 0; }
-    #lbStartWrap { margin-top: 4px; }
-    #lbStartWrap .lbList { max-height: 18vh; }
+    /* the player's own row, appended below the visible top-N when their rank
+       puts them outside it — a dashed divider sets it apart from the pack,
+       and its real rank (not the running counter) comes from data-rank */
+    .lbList li.lbSelfRow { border-top: 1px dashed rgba(255,255,255,.3); margin-top: 4px; padding-top: 9px; }
+    .lbList li.lbSelfRow::before { content: attr(data-rank); }
+
+    /* ---- Leaderboard modal restyle (Figma frame 179:1231): segmented mode
+       tabs, ornate gold-framed panel with a diamond finial, metallic shield
+       badges for the top three, rank-tinted values, and a gold-bordered
+       pill for the player's own row. Scoped to #lbScreen so the result
+       screen's boards keep their existing plain-row look. ---- */
+    .lbTitleImg {
+      display: block; width: min(300px, 72vw); height: auto;
+      margin: 0 auto 16px;
+      filter: drop-shadow(0 4px 12px rgba(0, 0, 0, .55));
+    }
+    #lbScreen .lbSeg {
+      position: relative; display: flex; gap: 4px; align-items: stretch;
+      width: min(400px, 84vw); margin: 0 auto 12px;
+      padding: 4px; border-radius: 8px;
+      background: rgba(5, 12, 26, .78);
+      border: 1px solid rgba(200, 158, 74, .65);
+      box-shadow: 0 0 0 3px rgba(5, 12, 26, .6), inset 0 0 12px rgba(0, 0, 0, .5);
+    }
+    /* small diamond finials on the frame's side edges, like the design */
+    #lbScreen .lbSeg::before, #lbScreen .lbSeg::after {
+      content: ''; position: absolute; top: 50%; width: 9px; height: 9px;
+      background: #0a1424; border: 1px solid rgba(200, 158, 74, .85);
+      transform: translate(-50%, -50%) rotate(45deg);
+    }
+    #lbScreen .lbSeg::before { left: 0; }
+    #lbScreen .lbSeg::after { left: 100%; }
+    #lbScreen .lbSeg--day { width: min(260px, 64vw); padding: 3px; margin-bottom: 10px; }
+    .lbSegBtn {
+      flex: 1; font-family: inherit; cursor: pointer;
+      font-size: 14px; font-weight: 700; letter-spacing: 1px;
+      color: rgba(255, 255, 255, .55);
+      background: transparent; border: 1px solid transparent; border-radius: 5px;
+      padding: 9px 6px;
+      transition: color .15s ease, background .15s ease, border-color .15s ease;
+    }
+    #lbScreen .lbSeg--day .lbSegBtn { font-size: 11px; padding: 6px; letter-spacing: 1.5px; text-transform: uppercase; }
+    .lbSegBtn:hover:not(.active) { color: rgba(255, 255, 255, .85); background: rgba(255, 255, 255, .05); }
+    .lbSegBtn.active {
+      color: #fff;
+      border-color: #d8ab5c;
+      background: linear-gradient(180deg, rgba(255, 214, 120, .12), rgba(255, 214, 120, .03));
+      box-shadow: inset 0 0 10px rgba(255, 200, 90, .12), 0 0 8px rgba(255, 200, 90, .15);
+    }
+    /* the board panel: gold-framed dark plate, diamond finial on the top edge */
+    /* Selectors below target BOTH #lbScreen (the standalone modal) and
+       #resultScreen (the compact post-race/post-voyage boards) — same
+       gold-framed panel, same badges, same self-row pill everywhere a
+       leaderboard shows up. */
+    #lbScreen .lbWrap, #resultScreen .lbWrap { width: min(430px, 88vw); }
+    /* the finial has to anchor on a wrapper around JUST .lbList, not .lbWrap:
+       #resultScreen's .lbWrap also holds .lbTitle ("Top 3 today") ABOVE the
+       list, so a finial pinned to a fixed offset from .lbWrap's own top
+       landed on that title text instead of the list's border (#lbScreen's
+       .lbWrap has no title, so the same offset happened to look right only
+       there). .lbListFrame always starts exactly where .lbList itself does,
+       title or no title. It also can't live directly on .lbList — that
+       element has overflow-y:auto, which clips the half of the diamond
+       meant to poke out above the border. */
+    .lbListFrame { position: relative; margin-top: 9px; }
+    .lbListFrame::before {
+      content: ''; position: absolute; z-index: 2; left: 50%; top: 0;
+      width: 15px; height: 15px; transform: translate(-50%, -50%) rotate(45deg);
+      background: #0e1830; border: 2px solid #c9973f;
+      box-shadow: 0 0 8px rgba(0, 0, 0, .6);
+    }
+    .lbListFrame::after {
+      content: ''; position: absolute; z-index: 3; left: 50%; top: 0;
+      width: 5px; height: 5px; transform: translate(-50%, -50%) rotate(45deg);
+      background: #c9973f;
+    }
+    #lbScreen .lbList, #resultScreen .lbList {
+      max-height: 44vh;
+      background: linear-gradient(180deg, #111c31, #0b1424);
+      border: 1px solid #b98a3e;
+      border-radius: 10px;
+      box-shadow: 0 0 0 3px rgba(10, 18, 34, .85), 0 0 0 4px rgba(185, 138, 62, .5),
+                  inset 0 0 26px rgba(0, 0, 0, .5);
+      padding: 12px 6px 10px;
+      scrollbar-color: #c9973f rgba(255, 255, 255, .06);
+    }
+    #lbScreen .lbList::-webkit-scrollbar, #resultScreen .lbList::-webkit-scrollbar { width: 9px; }
+    #lbScreen .lbList::-webkit-scrollbar-thumb, #resultScreen .lbList::-webkit-scrollbar-thumb {
+      background: linear-gradient(180deg, #e6c06a, #9d6823);
+      border: 2px solid #0b1424; border-radius: 5px;
+    }
+    #lbScreen .lbList::-webkit-scrollbar-track, #resultScreen .lbList::-webkit-scrollbar-track { background: rgba(255, 255, 255, .05); border-radius: 5px; }
+    #lbScreen .lbList li, #resultScreen .lbList li { align-items: center; gap: 12px; padding: 6px 14px; font-size: 15px; }
+    /* rank column: plain white number (4th place onward)… */
+    #lbScreen .lbList li::before, #resultScreen .lbList li::before {
+      content: counter(lb);
+      width: 26px; flex: none; text-align: center; opacity: .92; color: #fff;
+    }
+    /* …and metallic shield badges for the top three (dark center = radial
+       layer over the metal gradient, so the rim reads as a forged border) */
+    #lbScreen .lbList li:nth-child(-n+3)::before, #resultScreen .lbList li:nth-child(-n+3)::before {
+      height: 30px; display: flex; align-items: center; justify-content: center;
+      font-weight: 900; font-size: 13px; color: #fff; opacity: 1;
+      text-shadow: 0 1px 3px rgba(0, 0, 0, .85);
+      clip-path: polygon(50% 100%, 88% 84%, 100% 12%, 86% 0, 14% 0, 0 12%, 12% 84%);
+    }
+    #lbScreen .lbList li:nth-child(1)::before, #resultScreen .lbList li:nth-child(1)::before {
+      content: "1";
+      background: radial-gradient(ellipse 58% 48% at 50% 42%, #232c44 0%, #232c44 68%, transparent 69%),
+                  linear-gradient(160deg, #f9e197 0%, #d8a945 48%, #7d5518 100%);
+    }
+    #lbScreen .lbList li:nth-child(2)::before, #resultScreen .lbList li:nth-child(2)::before {
+      content: "2";
+      background: radial-gradient(ellipse 58% 48% at 50% 42%, #232c44 0%, #232c44 68%, transparent 69%),
+                  linear-gradient(160deg, #f0f4f7 0%, #a3aeb5 48%, #57626a 100%);
+    }
+    #lbScreen .lbList li:nth-child(3)::before, #resultScreen .lbList li:nth-child(3)::before {
+      content: "3";
+      background: radial-gradient(ellipse 58% 48% at 50% 42%, #232c44 0%, #232c44 68%, transparent 69%),
+                  linear-gradient(160deg, #edb27e 0%, #b8763f 48%, #653c17 100%);
+    }
+    /* rank-tinted right-hand values: gold / silver / bronze, then white */
+    #lbScreen .lbList li:nth-child(1) .lbScore, #lbScreen .lbList li:nth-child(1) .lbTime,
+    #resultScreen .lbList li:nth-child(1) .lbScore, #resultScreen .lbList li:nth-child(1) .lbTime { color: #dfad46; }
+    #lbScreen .lbList li:nth-child(2) .lbScore, #lbScreen .lbList li:nth-child(2) .lbTime,
+    #resultScreen .lbList li:nth-child(2) .lbScore, #resultScreen .lbList li:nth-child(2) .lbTime { color: #aab7bb; }
+    #lbScreen .lbList li:nth-child(3) .lbScore, #lbScreen .lbList li:nth-child(3) .lbTime,
+    #resultScreen .lbList li:nth-child(3) .lbScore, #resultScreen .lbList li:nth-child(3) .lbTime { color: #c68859; }
+    #lbScreen .lbList .lbTime, #resultScreen .lbList .lbTime { opacity: .92; font-size: 12px; }
+    /* the player's own row: gold-bordered pill, per the design */
+    #lbScreen .lbList li.me, #resultScreen .lbList li.me {
+      background: rgba(255, 255, 255, .05);
+      border: 1px solid #9d6823; border-radius: 999px;
+      margin: 2px 8px; padding-left: 10px; padding-right: 10px;
+      color: #fff;
+    }
+    /* appended self-row (rank outside the visible list): always the plain
+       data-rank number, never a badge, whatever list position it lands at */
+    #lbScreen .lbList li.lbSelfRow::before, #resultScreen .lbList li.lbSelfRow::before {
+      content: attr(data-rank);
+      height: auto; clip-path: none; background: none;
+      display: block; font-weight: 700; font-size: inherit; text-shadow: none;
+    }
 
     /* ---- Victory confetti ---- */
+    /* fixed + clipped to the viewport, sitting outside every .screen's own
+       (scrollable) box — see the #confettiLayer comment near #hud in the
+       body for why this can't just be a child of #resultScreen. */
+    #confettiLayer {
+      position: fixed; inset: 0; overflow: hidden; pointer-events: none; z-index: 40;
+    }
     .confetti {
       position: absolute; top: -50px; pointer-events: none;
       animation-name: confFall; animation-timing-function: linear; animation-fill-mode: forwards;
       filter: drop-shadow(0 2px 4px rgba(0,0,0,.4));
+      /* up to 36 of these fall + rotate + drop-shadow at once. Without this,
+         each one only gets promoted to its own GPU layer partway through —
+         whenever that promotion happens mid-flight, the compositor briefly
+         re-rasterizes it at a slightly different sub-pixel position, which
+         reads as the piece "hopping" a frame. will-change promotes them all
+         up front, before the animation starts (same fix already used for
+         .raster-btn's hover/press transitions). */
+      will-change: transform, opacity;
     }
     @keyframes confFall {
-      to { transform: translateY(115vh) rotate(680deg); opacity: .9; }
+      0% { transform: translateY(0) rotate(0deg); opacity: 1; }
+      85% { opacity: .9; }
+      to { transform: translateY(115vh) rotate(680deg); opacity: 0; }
     }
 
     /* countdown */
@@ -498,20 +1838,222 @@
       100% { opacity: 0; transform: scale(.9); }
     }
 
-    #touchHint { display: none; }
-    @media (pointer: coarse) {
-      #touchHint { display: block; }
-      .desktopHint { display: none; }
+    /* compact HUD on narrow screens — topbar drops below the utility buttons
+       row (settings/controls/restart, now pinned at the top on mobile) */
+    @media (max-width: 640px) {
+      .topbar { top: 56px; gap: 6px; padding: 0 6px; flex-wrap: nowrap; }
+      .topbar::before { top: -56px; } /* cancels the larger mobile top offset above */
+      .pill { min-width: 0; flex: 1 1 0; padding: 6px 6px; }
+      .pill .label { font-size: 10px; letter-spacing: 1px; white-space: nowrap; }
+      .pill .value { font-size: 21px; }
+      .pill .value small { font-size: 11px; }
     }
 
-    /* compact HUD on narrow screens */
+    /* ================= Raster button system =================
+       Runtime-wrapped cap/middle/cap buttons from /public/raster_btn. */
+    .raster-btn {
+      --btn-h: 62px;
+      --btn-cap-l: 79px;
+      --btn-cap-r: 76px;
+      --btn-min-mid: 34px;
+      --btn-pad-x: 46px;
+      --btn-overlap: 4px;
+      --btn-glow: rgba(255, 211, 106, .44);
+      --btn-ease-out: cubic-bezier(.22, 1, .36, 1); /* easeOutQuint: fast in, smooth out */
+      --btn-ease-snap: cubic-bezier(.34, 1.56, .64, 1);
+      position: relative;
+      display: inline-grid;
+      grid-template-columns: var(--btn-cap-l) minmax(var(--btn-min-mid), 1fr) var(--btn-cap-r);
+      /* center, not stretch: each __piece has a FIXED height (var(--btn-h)),
+         which can't stretch — so when a compact button sits next to a taller
+         sibling and its wrapper gets stretched to match (a plain flex row's
+         default cross-axis behavior), 'stretch' silently degrades to 'start'
+         per the grid spec (an item with a definite size can't stretch), pinning
+         the shorter pill to the TOP of the taller box instead of centering it. */
+      align-items: center;
+      min-height: var(--btn-h);
+      min-width: calc(var(--btn-cap-l) + var(--btn-cap-r) + var(--btn-min-mid));
+      margin-top: 8px;
+      isolation: isolate;
+      cursor: pointer;
+      filter: drop-shadow(0 7px 14px rgba(0,0,0,.34));
+      -webkit-user-select: none;
+      user-select: none;
+      transform: translate3d(0, 0, 0) scale(1);
+      transform-origin: 50% 58%;
+      will-change: transform, filter;
+      /* Cheap props only (transform + filter), no layout. The state flips the
+         instant :hover matches — transition-delay is explicitly 0. easeOutQuint
+         moves fast up front so the reaction READS as immediate, then glides out.
+         Same duration/easing both ways = snappy in, smooth back, no bounce. */
+      transition: transform .18s var(--btn-ease-out), filter .18s var(--btn-ease-out);
+      transition-delay: 0s;
+    }
+    .raster-btn--compact {
+      --btn-h: 48px;
+      --btn-cap-l: 61px;
+      --btn-cap-r: 59px;
+      --btn-min-mid: 18px;
+      --btn-pad-x: 32px;
+      --btn-overlap: 3px;
+    }
+    .raster-btn:hover,
+    .raster-btn:focus-within {
+      transform: translate3d(0, -2px, 0) scale(1.03);
+      /* ONE drop-shadow, not two stacked — each drop-shadow() is a separate
+         blur pass the browser has to rasterize on every frame of the
+         transition, and two of them (dark contact shadow + colored glow)
+         doubles that cost for a difference that barely reads visually. */
+      filter: brightness(1.12) drop-shadow(0 8px 15px var(--btn-glow));
+    }
+    .raster-btn:active {
+      transform: translate3d(0, 1px, 0) scale(.972);
+      transition-duration: .09s, .12s;
+      transition-timing-function: cubic-bezier(.2, 0, .2, 1);
+      filter: brightness(1.18) drop-shadow(0 4px 10px rgba(0,0,0,.36));
+    }
+    .raster-btn::after {
+      content: '';
+      position: absolute;
+      inset: 8px 18px;
+      z-index: 3;
+      pointer-events: none;
+      opacity: 0;
+      mix-blend-mode: screen;
+      background:
+        radial-gradient(circle at 18% 48%, rgba(255,255,255,.9) 0 1px, transparent 2px),
+        radial-gradient(circle at 74% 34%, rgba(255,238,160,.85) 0 1px, transparent 2px),
+        linear-gradient(105deg, transparent 16%, rgba(255,255,255,.42) 38%, transparent 58%);
+      transform: translateX(-28%) skewX(-7deg);
+      transition: opacity .16s var(--btn-ease-out);
+      transition-delay: 0s;
+    }
+    .raster-btn:hover::after,
+    .raster-btn:focus-within::after {
+      opacity: .72;
+      animation: rasterBtnShimmer 1.55s cubic-bezier(.22, .61, .36, 1) infinite;
+    }
+    @keyframes rasterBtnShimmer {
+      0% { transform: translateX(-32%) skewX(-7deg); opacity: 0; }
+      18% { opacity: .72; }
+      58% { transform: translateX(26%) skewX(-7deg); opacity: .46; }
+      100% { transform: translateX(34%) skewX(-7deg); opacity: 0; }
+    }
+    .raster-btn__piece {
+      position: relative;
+      z-index: 0;
+      grid-row: 1;
+      height: var(--btn-h);
+      pointer-events: none;
+      background-repeat: no-repeat;
+      background-size: 100% 100%;
+      image-rendering: auto;
+      transform: translateZ(0);
+      transition: filter .18s var(--btn-ease-out);
+      transition-delay: 0s;
+    }
+    .raster-btn:hover .raster-btn__piece,
+    .raster-btn:focus-within .raster-btn__piece { filter: saturate(1.08); }
+    .raster-btn__piece--left,
+    .raster-btn__piece--right {
+      z-index: 1;
+      width: calc(100% + var(--btn-overlap));
+    }
+    .raster-btn__piece--left { justify-self: start; }
+    .raster-btn__piece--right { justify-self: end; }
+    .raster-btn__piece--left { grid-column: 1; }
+    .raster-btn__piece--mid {
+      grid-column: 2;
+      margin-inline: calc(var(--btn-overlap) * -1);
+      background-repeat: repeat-x;
+      background-size: auto 100%;
+    }
+    .raster-btn__piece--right { grid-column: 3; }
+    .raster-btn--red { --btn-glow: rgba(255, 110, 62, .52); }
+    .raster-btn--blue { --btn-glow: rgba(128, 198, 255, .5); }
+    .raster-btn--red .raster-btn__piece--left { background-image: url('/raster_btn/btn-red-left.png'); }
+    .raster-btn--red .raster-btn__piece--mid { background-image: url('/raster_btn/btn-red-mid.png'); }
+    .raster-btn--red .raster-btn__piece--right { background-image: url('/raster_btn/btn-red-right.png'); }
+    .raster-btn--blue .raster-btn__piece--left { background-image: url('/raster_btn/btn-blue-left.png'); }
+    .raster-btn--blue .raster-btn__piece--mid { background-image: url('/raster_btn/btn-blue-mid.png'); }
+    .raster-btn--blue .raster-btn__piece--right { background-image: url('/raster_btn/btn-blue-right.png'); }
+    .raster-btn__label {
+      position: relative;
+      grid-column: 1 / -1;
+      grid-row: 1;
+      z-index: 2;
+      display: grid;
+      place-items: center;
+      box-sizing: border-box;
+      height: var(--btn-h);
+      min-height: var(--btn-h);
+      padding: 0 var(--btn-pad-x);
+      border: 0;
+      border-radius: 0;
+      background: transparent;
+      color: #fff;
+      font-family: inherit;
+      line-height: 1;
+      text-align: center;
+      text-decoration: none;
+      white-space: nowrap;
+      text-shadow: 0 2px 4px rgba(0,0,0,.62), 0 0 8px rgba(255,255,255,.14);
+      touch-action: manipulation;
+      -webkit-tap-highlight-color: transparent;
+      transition:
+        color .18s var(--btn-ease-out),
+        text-shadow .18s var(--btn-ease-out),
+        transform .18s var(--btn-ease-out);
+      transition-delay: 0s;
+    }
+    .raster-btn:hover .raster-btn__label,
+    .raster-btn:focus-within .raster-btn__label {
+      transform: translateY(-1px);
+      text-shadow: 0 3px 5px rgba(0,0,0,.64), 0 0 12px rgba(255,255,255,.22);
+    }
+    .raster-btn:active .raster-btn__label {
+      transform: translateY(1px);
+      transition-duration: .08s;
+    }
+    .raster-btn__label:focus-visible {
+      outline: 2px solid rgba(255, 230, 151, .95);
+      outline-offset: -9px;
+    }
+    .raster-btn__label kbd {
+      margin-left: 4px;
+      transform: translateY(-1px);
+    }
+    .raster-btn .lbTab {
+      background: transparent;
+      border: 0;
+    }
+    .raster-btn .lbTab.active {
+      background: transparent;
+      border: 0;
+      color: #fff7c8;
+      text-shadow: 0 0 8px rgba(255,211,106,.6), 0 2px 4px rgba(0,0,0,.72);
+    }
+    /* "Challenge a friend" is too long to sit beside "Row again" on a
+       narrow screen — shorten it so the pair stays on one row instead of
+       the ghost button wrapping onto its own line below. */
+    .narrowShow { display: none; }
     @media (max-width: 640px) {
-      .topbar { gap: 6px; padding: 0 6px; flex-wrap: nowrap; }
-      .pill { min-width: 0; flex: 1 1 0; padding: 6px 6px; border-radius: 10px; }
-      .pill .label { font-size: 8px; letter-spacing: 1px; white-space: nowrap; }
-      .pill .value { font-size: 16px; }
-      .pill .value small { font-size: 9px; }
-      #resultStats .pill { flex: 0 1 auto; min-width: 100px; }
+      .raster-btn {
+        --btn-h: 54px;
+        --btn-cap-l: 69px;
+        --btn-cap-r: 66px;
+        --btn-pad-x: 34px;
+        --btn-overlap: 4px;
+      }
+      .raster-btn--compact {
+        --btn-h: 44px;
+        --btn-cap-l: 56px;
+        --btn-cap-r: 54px;
+        --btn-pad-x: 24px;
+        --btn-overlap: 3px;
+      }
+      .narrowHide { display: none; }
+      .narrowShow { display: inline; }
     }
   </style>
 </head>
@@ -519,152 +2061,515 @@
   <div id="app"></div>
 
   <div id="hud">
+    <!-- confetti lives in its own fixed, clipped layer instead of being a
+         child of #resultScreen (a .screen, which has overflow-y:auto for
+         legitimately-tall content like leaderboards) — confFall's
+         translateY(115vh) travel used to extend .screen's own scrollable
+         area as pieces fell, popping a scrollbar in/out mid-celebration.
+         See spawnConfetti() in main.js. -->
+    <div id="confettiLayer"></div>
+    <div id="preloaderScreen">
+      <div id="preloadBarWrap"><canvas id="pendulumCanvasPreload"></canvas></div>
+      <div class="introText" id="preloadPct">0%</div>
+    </div>
     <div id="vignette"></div>
     <div id="boostGlow"></div>
     <div id="hitFlash"></div>
 
-    <button id="muteBtn" aria-label="Slå av/på lyd">🔊</button>
-    <button id="restartBtn" aria-label="Start på nytt" style="display:none">↻</button>
+    <!-- voyage stage chapter card — populated/replayed by showStageChapter() in main.js -->
+    <div id="stageChapter" aria-hidden="true">
+      <div id="stageChapterKicker"></div>
+      <div id="stageChapterName"></div>
+    </div>
+
+    <button id="settingsBtn" aria-label="Settings"><img src="/icons/settings-01.svg" alt="" width="20" height="20"></button>
+    <button id="controlsBtn" aria-label="View controls" style="display:none"><img src="/icons/control.svg" alt="" width="20" height="20"></button>
+    <button id="restartBtn" aria-label="Restart" style="display:none"><img src="/icons/menu-01.svg" alt="" width="20" height="20"></button>
 
     <!-- Restart confirmation (pauses the game) -->
     <div class="screen hidden" id="confirmScreen">
       <div class="confirmBox">
-        <div class="confirmTitle">Starte på nytt?</div>
-        <div class="confirmText">Løpet settes på pause. Vil du avbryte og ro fra startstreken igjen?</div>
-        <div class="menuBtns">
-          <button class="cta" id="confirmYes">Ja, start på nytt</button>
-          <button class="cta ctaSecondary" id="confirmNo">Nei, fortsett</button>
+        <div class="confirmTitle">Restart?</div>
+        <!-- body copy is set per-state in main.js (mid-race vs finished) -->
+        <div class="confirmText" id="confirmText">The race will pause. Do you want to abandon it and row from the start line again?</div>
+        <div class="menuBtns menuBtns--stack">
+          <button class="cta" id="confirmYes">Yes, restart</button>
+          <button class="cta ctaSecondary" id="confirmNo">No, continue</button>
+        </div>
+        <!-- leaving the race entirely is the more drastic exit — set apart
+             from the two in-race choices above, at the bottom -->
+        <button class="ctaGhost confirmMenuBtn" id="confirmMenu">Main menu</button>
+      </div>
+    </div>
+
+    <!-- Settings modal: music / SFX toggles. Pauses the race while open. -->
+    <div class="screen hidden" id="settingsScreen">
+      <div class="confirmBox" style="position:relative">
+        <button class="modalClose" id="settingsClose" aria-label="Close">✕</button>
+        <div class="confirmTitle">Settings</div>
+        <div class="settingRow">
+          <span>Music</span>
+          <button class="toggle" id="toggleMusic" aria-label="Toggle music"></button>
+        </div>
+        <div class="settingRow">
+          <span>Sound effects</span>
+          <button class="toggle" id="toggleSfx" aria-label="Toggle sound effects"></button>
+        </div>
+        <div class="settingRow">
+          <span>Reset voyage progress</span>
+          <button class="settingResetBtn" id="resetVoyageBtn">Reset</button>
+        </div>
+        <!-- Only unhidden by main.js when DEV_TOOLS is on (see the "dev tools
+             online-unlock" block there) — invisible to ordinary players, the
+             only way off once a QA build has it on via the URL secret. -->
+        <div class="settingRow" id="devToolsRow" style="display:none">
+          <span>Dev tools</span>
+          <button class="toggle on" id="toggleDevTools" aria-label="Toggle dev tools"></button>
+        </div>
+      </div>
+    </div>
+
+    <!-- About the game: the making-of story, opened from the splash's
+         "About the game" button — same modal presentation as Settings
+         (gold plate + ✕), with its own scrolling body for the long text -->
+    <div class="screen hidden" id="aboutScreen">
+      <div class="confirmBox">
+        <button class="modalClose" id="aboutCloseBtn" aria-label="Close">✕</button>
+        <div class="confirmTitle">About the game</div>
+        <div class="aboutBody">
+          <p class="aboutLede">ROWAY</p>
+          <p>Jeg utfordret meg selv til å gjøre Norges VM-ferd om til et morsomt spill om å ro.</p>
+          <p>Navnet kom fra NORWAY.</p>
+          <p>Jeg byttet ut «NOR» med «ROW».</p>
+          <p>Resultatet ble ROWAY.</p>
+          <p>Et norsk vikingskip. Fem etapper. Elleve spillere, en trommeslager og Mr. Row Row som leder ferden.</p>
+          <p>Oppdraget:</p>
+          <p>Ro til USA. Hent VM-trofeet. Ta det hjem til Ullevaal og fedrelandet.</p>
+          <p>Den største utfordringen var å gjøre selve roingen enkel, rytmisk og morsom – og få et helt 3D-mannskap til å bevege seg i takt med spillet.</p>
+          <p>Jeg har laget idé, konsept, spilldesign, art direction og brukeropplevelse selv.</p>
+          <p>ChatGPT, Meshy, Cursor, Claude Code, Three.js og egne AI-agenter har vært produksjonsteamet mitt.</p>
+          <p>Det ble ikke perfekt.</p>
+          <p>Det var heller aldri poenget.</p>
+          <p>Poenget var å se hvor langt én person kunne ta én idé på ti kvelder.</p>
+          <p class="aboutSign">AI produserer. Håndverket avgjør.</p>
         </div>
       </div>
     </div>
 
     <div class="topbar" id="topbar" style="display:none">
       <div class="pill">
-        <div class="label">Tid</div>
         <div class="value" id="hudTime">0:00.0</div>
       </div>
       <div class="pill">
-        <div class="label">Fart</div>
-        <div class="value" id="hudSpeed">0 <small>km/t</small></div>
+        <div class="value" id="hudSpeed">0 <small>km/h</small></div>
       </div>
       <div class="pill">
-        <div class="label">Distanse</div>
-        <div class="value" id="hudDist">0 <small>m</small></div>
-      </div>
-      <div class="pill" style="border-color: rgba(255,210,94,.5)">
-        <div class="label">⚽ Fotballer</div>
-        <div class="value" id="hudBalls">0</div>
-      </div>
-      <div class="pill" id="posPill">
-        <div class="label">Posisjon</div>
-        <div class="value" id="hudPos">1.</div>
+        <div class="value" id="hudBalls"><span id="hudBallsCount">0</span><img class="ballIcon" src="/football_icon.png" alt=""></div>
       </div>
     </div>
-
     <div id="feedback"></div>
     <div id="comboBadge"></div>
     <div id="roCue">RO!</div>
 
     <div id="strokeMeterWrap" style="display:none">
-      <div id="tempoDots"><span class="drumIcon">🥁</span></div>
-      <div id="strokeHint"><span class="desktopHint">HOLD <kbd>SPACE</kbd> — ta i — og SLIPP i det gylne feltet!</span><span id="touchHint">HOLD på skjermen — og SLIPP i det gylne feltet!</span></div>
-      <div id="strokeMeter">
-        <div id="strokeZoneGood"></div>
-        <div id="strokeZone"></div>
-        <div id="strokeFill"></div>
-      </div>
+      <!-- pendulum-curve rowing control: the charge value rides a bob along a
+           shallow arc. Entirely procedural (canvas 2D) — no image assets.
+           Backing-store size + DPR are set from JS in initPendulum(). -->
+      <div id="strokeMeter"><canvas id="pendulumCanvas"></canvas></div>
     </div>
 
     <div id="countdown"></div>
 
     <div id="touchControls">
       <div id="steerBtns">
-        <button id="btnL" aria-label="Styr venstre">◀</button>
-        <button id="btnR" aria-label="Styr høyre">▶</button>
+        <button id="btnL" aria-label="Steer left">◀</button>
+        <button id="btnR" aria-label="Steer right">▶</button>
       </div>
-      <button id="rowBtn" aria-label="Ro">RO</button>
+      <button id="rowBtn" aria-label="Row">ROW</button>
     </div>
 
     <!-- Cinematic intro letterbox -->
     <div id="cinebars" class="on">
       <div class="cbar cbarTop"></div>
       <div class="cbar cbarBot"></div>
-      <div id="introSkip">trykk for å hoppe over</div>
+      <div id="introSkip">tap to skip</div>
     </div>
 
     <!-- Start screen -->
     <div class="screen hidden" id="startScreen">
-      <img id="logoShield" src="/norge-skjold.png" alt="Norge-skjoldet" decoding="async"
-           onload="document.getElementById('flagBand').style.display='none'"
-           onerror="this.style.display='none'">
-      <div class="flag-band" id="flagBand">
-        <span style="background:#ba0c2f"></span><span style="background:#fff"></span><span style="background:#00205b"></span><span style="background:#fff"></span><span style="background:#ba0c2f"></span>
-      </div>
-      <div class="title">Vikingferd</div>
-      <div class="subtitle">⚽ Team Norway Rowing ⚽</div>
+      <!-- keyart_final.png (characters + shield + wordmark) gets the WebGL
+           shine/tilt treatment via logo.js — replaces the old separate
+           shield <img> + wordmark; .title is its plain-HTML fallback -->
+      <div class="title">ROWAY</div>
       <div class="introText">
-        Ro Norges vikingskip gjennom fjorden til det store fotballmålet —
-        og slå Sverige på veien! 🇳🇴
+        Go for the fastest time in Time Attack –<br>or take on Story Mode and row the World Cup trophy all the way home.
+      </div>
+      <!-- Fase 3b: two modes — Kapproing (today's daily race + leaderboard) and
+           Reisen (the ongoing voyage; no leaderboard, focused on the journey).
+           Renamed to Time Attack / Story Mode for players — IDs and every
+           mode-branch in main.js (G.gameMode === 'kapp'/'voyage') are untouched. -->
+      <div class="menuBtns menuBtns--stack">
+        <button class="cta" id="startBtn">Time Attack</button>
+        <button class="cta ctaSecondary" id="startVoyageBtn">Story Mode</button>
       </div>
       <div class="menuBtns">
-        <button class="cta" id="startBtn">START</button>
-        <button class="cta ctaSecondary" id="lbBtn">🏆 Toppliste</button>
+        <button class="ctaGhost" id="lbBtn">Leaderboard</button>
+        <button class="ctaGhost" id="aboutBtn">About the game</button>
+        <!-- Reisen/Oppdrag hidden from the splash for now — kept in the DOM
+             (not deleted) so their existing wiring/hud references below still
+             resolve; "se reisen" on the result screen still opens the voyage
+             screen regardless. -->
+        <button class="ctaGhost" id="voyageBtn" style="display:none">Voyage</button>
+        <button class="ctaGhost" id="missionsBtn" style="display:none">Missions</button>
+      </div>
+      <!-- pinned near the viewport's bottom edge (not inline with the
+           centred menu content, which can sit well above it) -->
+      <div class="creditLine">Created by <a href="https://www.winsen.no/" target="_blank" rel="noopener noreferrer" aria-label="Jørgen Winsnes / winsen.no — opens in a new tab">Jørgen Winsnes / winsen.no</a></div>
+    </div>
+
+    <!-- Fase 3: Atlanterhavsferden — the persistent voyage map -->
+    <div class="screen hidden" id="voyageScreen">
+      <div class="title titleSmall" id="voyageScreenTitle">The Atlantic Voyage</div>
+      <!-- mount point only — src/map/voyageMap.js builds every layer (scrim,
+           route, sprites, progress bar, footer text, smoke) from the real
+           asset package at public/roway_map_dev_package/. Shown for casual
+           "see the voyage" views; hidden in favour of the stage card below
+           when this screen is opened to start a specific stage's race. -->
+      <div id="voyageMapWrap"></div>
+      <!-- Stage map v3: shared looping 3D-map video (public/3d map/
+           3dmap_loop.mp4) under a per-stage route overlay (public/3d map/
+           stageN.png, same 1080x1920 canvas as the video, so they align 1:1
+           by construction). The overlay img doubles as the no-video fallback:
+           it always renders, so a blocked/failed video just leaves the
+           static route map on black. main.js swaps the overlay src per
+           stage and nudges .play() on open. -->
+      <div class="hiddenMsg" id="voyageStageCardWrap">
+        <div class="mapVideoBox">
+          <video id="voyageStageVideo" class="mapVideo" src="/3d%20map/3dmap_loop.mp4"
+                 poster="/3d%20map/3dmap_poster.jpg"
+                 autoplay loop muted playsinline preload="auto" tabindex="-1"></video>
+          <img id="voyageStageCardImg" class="mapOverlay stageFadeImg" alt="" decoding="async">
+        </div>
+      </div>
+      <!-- voyage-complete screen: replaces the stage map/video entirely with
+           the Ullevaal homecoming artwork once the trophy is home — see
+           openVoyageScreen()'s voyageDone branch in main.js. -->
+      <div class="hiddenMsg" id="voyageDoneWrap">
+        <img id="voyageDoneImg" src="/3d%20ulleval/ulleval.png" alt="" decoding="async">
+      </div>
+      <!-- badge lives OUTSIDE the card wrap: the wrap is its own stacking
+           context (z 0 in stage-card-mode), so inside it the badge would
+           render under the screen's scrim gradients (z 1). Out here its
+           z-index 3 puts it above scrims and the route overlay on every
+           stage; hidden entirely outside stage-card-mode (see CSS), and on
+           the voyage-complete screen (see main.js). -->
+      <img id="voyageStageBadgeImg" class="stageBadgeImg stageFadeImg" alt="" decoding="async">
+      <!-- voyage-complete header: the "VOYAGE COMPLETE" wordmark IS the
+           headline now — the plain-text version is dropped from
+           #voyageScreenTitle (see main.js) so it's never said twice. -->
+      <img class="hiddenMsg" id="voyageDoneHeaderImg" src="/voyagecomplete.png" alt="Voyage complete" decoding="async">
+      <!-- voyage-complete stats: place/time/score, filled in by
+           renderVoyageDoneStatus() in main.js — place resolves async (server
+           round-trip), time+score are local and shown immediately. -->
+      <div class="hiddenMsg" id="voyageDoneStats">
+        <div class="voyageDoneStat"><span class="voyageDoneStatValue" id="voyageDoneStatPlace">—</span><span class="voyageDoneStatLabel">Total place</span></div>
+        <div class="voyageDoneStat"><span class="voyageDoneStatValue" id="voyageDoneStatTime">—</span><span class="voyageDoneStatLabel">Total time</span></div>
+        <div class="voyageDoneStat"><span class="voyageDoneStatValue" id="voyageDoneStatScore">—</span><span class="voyageDoneStatLabel">Total score</span></div>
+      </div>
+      <!-- always stacked (per request): every state of this screen — stage
+           card, map view, voyage-complete finale — lays its buttons in one
+           centred column, same as the splash screen's mode buttons -->
+      <div class="menuBtns menuBtns--stack">
+        <!-- only shown when this screen was opened via "Start Reisen" — casual
+             views of the map (from the splash screen or "se reisen") only get Tilbake -->
+        <button class="cta" id="voyageStartRaceBtn" style="display:none">Row!</button>
+        <!-- main red CTA (like Row Race on the splash) — only ever shown on
+             the voyage-complete screen, so no ctaSecondary toning-down here -->
+        <button class="cta" id="startNewVoyageBtn" style="display:none">Start New Voyage</button>
+        <!-- voyage-complete only (see openVoyageScreen() in main.js) — opens
+             the Leaderboard modal straight to its Story Mode tab -->
+        <button class="ctaGhost" id="voyageDoneLbBtn" style="display:none">Leaderboard</button>
+        <button class="ctaGhost" id="voyageBackBtn">Back</button>
+        <!-- voyage-complete only — same "no confirm needed, run is already
+             scored" exit as #resultMenuBtn; Back here returns to whichever
+             screen opened this one, which isn't always the main menu -->
+        <button class="linkBtn" id="voyageDoneMenuBtn" style="display:none">Main menu</button>
+      </div>
+    </div>
+
+    <!-- Fase 4a: active missions + R-O-W-A-Y letter-hunt status -->
+    <div class="screen hidden" id="missionsScreen">
+      <div class="title titleSmall">Missions</div>
+      <div id="missionsList"></div>
+      <div id="letterStatus"></div>
+      <div class="menuBtns">
+        <button class="ctaGhost" id="missionsBackBtn">Back</button>
+      </div>
+    </div>
+
+    <!-- Fase 2: incoming challenge link (?c=<id>) — shown instead of the splash flow -->
+    <div class="screen hidden" id="challengeScreen">
+      <div class="title titleSmall" id="challengeTitle"></div>
+      <div class="introText" id="challengeTimeText"></div>
+      <div class="menuBtns">
+        <button class="cta" id="challengeGoBtn">Row!</button>
+        <button class="ctaGhost" id="challengeNoBtn">No thanks</button>
       </div>
     </div>
 
     <!-- How-to modal (shown after START, before the race) -->
+    <!-- Two presentations of the same screen: the pre-race flow (icy wordmark,
+         ROW!/Back buttons, full-bleed) and .howtoModal — the gold-plate modal
+         used when opened from the top-right controls icon (settings-style
+         title + ✕ close, wordmark and flow buttons hidden). openControlsHelp()
+         in main.js toggles the class. -->
     <div class="screen hidden" id="howtoScreen">
-      <div class="title titleSmall">SLIK SPILLER DU</div>
-      <div class="howtoGrid">
-        <div class="howCard">🚣 <b>RO:</b> <span class="deskOnly">HOLD <kbd>SPACE</kbd></span><span class="touchOnly">HOLD den røde RO-knappen</span> — kraften bygger — og <b>SLIPP i det gylne feltet</b></div>
-        <div class="howCard">🥁 <b>TAKT:</b> Haaland trommer og roper «RO!» — slipp taket på ropet for å bygge tempo og nå <b>MAX FART</b></div>
-        <div class="howCard">🧭 <b>STYR:</b> <span class="deskOnly"><kbd>←</kbd> <kbd>→</kbd> eller <kbd>A</kbd> <kbd>D</kbd></span><span class="touchOnly">pilknappene nede til venstre</span></div>
-        <div class="howCard">🚩 <b>PORTER:</b> Ro gjennom de lysende portene for fartsbonus</div>
-        <div class="howCard">⚽ <b>FOTBALLER:</b> Samle dem for turbo-boost</div>
-        <div class="howCard">🧊 <b>UNNGÅ:</b> Isflakene i leia — og ikke la Sverige dytte deg ut av kurs!</div>
+      <div class="howtoInner">
+        <button class="modalClose" id="howtoModalX" aria-label="Close">✕</button>
+        <img class="howtoTitleImg" src="/howto-play.png" alt="How to Play" decoding="async">
+        <div class="confirmTitle howtoModalTitle">How to play</div>
+        <div class="introText"><span class="deskOnly">Hold <b>SPACE</b> to charge the oar.</span><span class="touchOnly">Hold the <b>red button</b> to charge the oar.</span> Release when the spark reaches the center of the <span class="greenZone">GREEN ZONE</span> for the perfect oar stroke.</div>
+        <div class="howtoLines">
+          <div class="howtoLine"><b>Steer:</b> <span class="deskOnly"><img class="keyBtn" src="/buttons/left.png" alt="left" decoding="async"> <img class="keyBtn" src="/buttons/right.png" alt="right" decoding="async"> or <img class="keyBtn" src="/buttons/a.png" alt="A" decoding="async"> <img class="keyBtn" src="/buttons/d.png" alt="D" decoding="async"></span><span class="touchOnly">the arrow buttons at bottom left</span></div>
+          <div class="howtoLine"><b>Row:</b> <span class="deskOnly">hold <span class="keyBtn keyBtn--space" id="howtoSpaceKey" role="img" aria-label="SPACE"></span></span><span class="touchOnly">hold the red button</span> — release in the <span class="greenZone">green zone</span></div>
+        </div>
+
+        <!-- looping demo of the real row bar (same pendulum meter as the race),
+             always releasing dead-centre. Rendered by main.js into this canvas. -->
+        <div id="pendDemoWrap"><canvas id="pendulumCanvasDemo"></canvas></div>
+
+        <div class="menuBtns menuBtns--stack">
+          <button class="cta" id="goBtn">Row!</button>
+          <button class="ctaGhost" id="howtoBackBtn">Back</button>
+          <!-- legacy mid-race resume CTA — superseded by the ✕ in modal mode -->
+          <button class="cta" id="howtoCloseBtn" style="display:none">Keep rowing!</button>
+        </div>
       </div>
-      <button class="cta" id="goBtn">RO! 🚣</button>
     </div>
 
     <!-- Leaderboard modal (from the splash screen) -->
     <div class="screen hidden" id="lbScreen">
-      <div class="title titleSmall">🏆 TOPPLISTE</div>
-      <div class="lbWrap">
-        <ol id="lbStart" class="lbList"></ol>
+      <!-- icy LEADERBOARD wordmark from the Figma frame (public/leaderboard.png,
+           464×84) — replaces the old text title. Lowercase filename matches
+           the file on disk exactly: deploy servers are case-sensitive. -->
+      <img class="lbTitleImg" src="/leaderboard.png" alt="LEADERBOARD" />
+      <!-- top-level mode tabs — which game mode's board is showing. Time
+           Attack = the existing KAPPRO Today/All-time board, unchanged.
+           Story Mode = the REISEN combined-time board, reusing the same
+           get-voyage fetch + paintVoyageBoard() row rendering the result
+           screen's own board already uses (see renderStoryModeLeaderboard()
+           in main.js) — just painted into #lbStoryList instead. Always
+           opens on Time Attack (see openLeaderboardFrom() in main.js).
+           lbSegBtn (NOT lbTab) keeps these out of the raster-button
+           enhancer — the Figma design is one segmented control, not two
+           separate framed buttons. -->
+      <div class="lbSeg lbSeg--mode">
+        <button class="lbSegBtn active" id="lbModeTimeBtn">Time attack</button>
+        <button class="lbSegBtn" id="lbModeStoryBtn">Story mode</button>
       </div>
-      <button class="cta ctaSecondary" id="lbCloseBtn">Lukk</button>
+
+      <div id="lbTimeAttackPane">
+        <div class="lbSeg lbSeg--day">
+          <button class="lbSegBtn active" id="lbTabDay">Today</button>
+          <button class="lbSegBtn" id="lbTabAll">All-time</button>
+        </div>
+        <div class="lbWrap">
+          <div class="lbListFrame"><ol id="lbStart" class="lbList"></ol></div>
+        </div>
+      </div>
+
+      <div id="lbStoryPane" class="hiddenMsg">
+        <div class="lbWrap">
+          <!-- empty/loading states are plain <li class="empty"> rows, same
+               pattern paintBoard()/paintVoyageBoard() already use elsewhere -->
+          <div class="lbListFrame"><ol id="lbStoryList" class="lbList"></ol></div>
+        </div>
+      </div>
+
+      <button class="cta ctaSecondary" id="lbCloseBtn">Close</button>
     </div>
 
-    <!-- Result screen -->
+    <!-- DEV-ONLY: isolated ship model viewer (psw gallery). Transparent so the
+         live 3D scene (ship + water, everything else hidden) shows through —
+         see openShipViewer()/closeShipViewer() in main.js. Drag to orbit. -->
+    <div class="screen hidden" id="shipViewerScreen">
+      <button class="modalClose" id="shipViewerCloseBtn" aria-label="Close">✕</button>
+      <div id="shipViewerHint">Drag to rotate</div>
+    </div>
+
+    <!-- Result screen — placement-first hierarchy (Row Race) / stage-first
+         (Reisen). See fillResultRaceTestData/fillResultVoyageTestData in
+         src/devScreens.js for a field-by-field map of what each mode shows. -->
     <div class="screen hidden" id="resultScreen">
       <img id="resultShield" src="/norge-skjold.png" alt="" decoding="async"
            onerror="this.style.display='none'">
-      <div id="medal">🏆</div>
-      <div class="title" id="resultTitle">MÅL!</div>
-      <div class="subtitle" id="resultSub">Norge scorer!</div>
+      <!-- small secondary context — the match result is no longer the hero -->
+      <div class="title resultTitleSmall" id="resultTitle">FINISH!</div>
+      <!-- Fase 2: duel outcome — only populated/shown when racing against a
+           challenge. A single celebratory line, no separate rematch button —
+           "Challenge a friend" below already creates/shares the same link. -->
+      <div id="duelCard" class="hiddenMsg">
+        <div id="duelResult"></div>
+      </div>
+      <!-- voyage-only: the actual stage NAME (e.g. "OUT OF THE FJORD"), a
+           small pill-style line sitting just above the "COMPLETED" headline —
+           visually secondary to it. Hidden entirely in Row Race (kapp has no
+           stage concept). -->
+      <div id="stageNameBanner" class="hiddenMsg"></div>
+      <!-- Row Race hero: placement is the reward, not the score. placeBanner is
+           the ONLY headline now ("RACE COMPLETED" / "COMPLETED") — the stage
+           name (voyage only) lives in #stageNameBanner above, and the actual
+           rank number lives inside #resultCard's RANK stat below. -->
       <div id="placeBanner"></div>
-      <div id="resultStats">
-        <div class="pill"><div class="label">Tid</div><div class="value" id="resTime">—</div></div>
-        <div class="pill"><div class="label">Beste tid</div><div class="value" id="resBest">—</div></div>
-        <div class="pill"><div class="label">⚽ Fotballer</div><div class="value" id="resBalls">—</div></div>
-        <div class="pill"><div class="label">Perfekte tak</div><div class="value" id="resPerfect">—</div></div>
+      <!-- any distance milestone(s) this run crossed (trophy pickup, landmark) —
+           a narrative moment, sits above the stat card when present -->
+      <div id="voyageMilestones"></div>
+      <!-- Consolidated stat card: an optional "new best" badge, big points
+           total + Pts label, a divider, then a two-column TIME / RANK row.
+           Populated per-mode in finishRace() (src/main.js) — RANK starts at
+           "—" and fills in async where the authoritative rank needs a server
+           round-trip. -->
+      <div id="resultCard">
+        <!-- shown only on an actual new personal-best time (see isRecord/
+             isStageBest in main.js) — lives inside the card frame now -->
+        <div id="newBestBadge" class="hiddenMsg">🏆 New best time!</div>
+        <div id="resCardScoreRow">
+          <span id="resScore">—</span><span id="resCardPtsLabel">Pts</span>
+        </div>
+        <div id="resCardDivider"></div>
+        <div id="resCardStatsRow">
+          <div class="resCardStat">
+            <div class="resCardStatLabel">⏱ Time</div>
+            <div class="resCardStatValue" id="resTime">—</div>
+          </div>
+          <div class="resCardStat">
+            <div class="resCardStatLabel">🏆 Rank</div>
+            <div class="resCardStatValue" id="resRank">—</div>
+          </div>
+          <div class="resCardStat">
+            <div class="resCardStatLabel">⚽ Balls</div>
+            <div class="resCardStatValue" id="resBalls">—</div>
+          </div>
+        </div>
       </div>
-      <div id="scoreBox">
-        <div class="label">POENGSUM</div>
-        <div id="resScore">—</div>
-        <div id="scoreBreakdown"></div>
+      <!-- Fase 3e: per-stage rank + the stage-5 one-shot caveat (voyage mode
+           only) — the stage NAME itself now lives in #stageNameBanner above -->
+      <div id="stageContext" class="hiddenMsg"></div>
+      <!-- Row Race: one rotating reward/stat line at a time (perfect bonus, gate
+           penalty, finish time, …). Driven by startResultTicker()/
+           stopResultTicker() in main.js. -->
+      <div id="resultTicker"></div>
+      <!-- REISEN server leaderboard: a quiet caveat line, only shown while the
+           combined-time rank is still pending a server round-trip (see
+           renderVoyageRankBanner() in main.js) -->
+      <div id="voyageRankBanner" class="hiddenMsg"></div>
+      <div class="lbWrap hiddenMsg" id="voyageLbWrap">
+        <div class="lbTitle">🏆 Voyage leaderboard (combined time)</div>
+        <div class="lbListFrame"><ol id="voyageLeaderboard" class="lbList"></ol></div>
       </div>
-      <div id="saveRow">
-        <input id="aliasInput" maxlength="14" placeholder="Skriv navn / alias…" autocomplete="off">
-        <button id="saveScoreBtn">Lagre</button>
+      <!-- Leaderboard name entry — shown for a first-time Row Race finisher
+           (see beginKappLeaderboardFlow() in main.js) AND for Reisen's
+           one-shot final-stage save (saveVoyageFinal()). lbNameHeadline/
+           lbNameSubtext/lbNameError are Row-Race-only text; voyage mode never
+           reveals them, keeping its existing plain input+button look. -->
+      <div id="lbNameHeadline" class="hiddenMsg">You made the leaderboard!</div>
+      <div id="lbNameSubtext" class="hiddenMsg">Enter your name so others know who to beat.</div>
+      <div id="saveRow" style="display:none">
+        <label for="aliasInput" class="srOnly">Your name for the leaderboard</label>
+        <input id="aliasInput" maxlength="16" placeholder="ENTER YOUR NAME" autocomplete="off"
+               autocapitalize="words" spellcheck="false" aria-describedby="lbNameError">
+        <button id="saveScoreBtn">Claim your place</button>
       </div>
-      <button id="skipSaveBtn" class="linkBtn">hopp over</button>
-      <div id="savedMsg" class="hiddenMsg">✅ Lagret på topplisten!</div>
+      <!-- no hiddenMsg class here on purpose — visibility is purely content-
+           driven via the #lbNameError:empty CSS rule (reserved min-height so
+           the layout never jumps when the message appears/disappears) -->
+      <div id="lbNameError" role="alert"></div>
+      <button id="skipSaveBtn" class="linkBtn" style="display:none">Skip for now</button>
+      <div id="savedMsg" class="hiddenMsg">Saved to the leaderboard!</div>
+      <!-- Fase 3e: voyage mode's two continue actions replace retryBtn/
+           challengeBtn below — same full-width stacked treatment (and exact
+           width formula) as the splash screen's ROW RACE / BRING HOME THE
+           TROPHY buttons (.menuBtns--stack). "Row on" (move forward) is the
+           primary/first action; "Row stage again" (repeat) sits below it. -->
+      <div class="menuBtns menuBtns--stack">
+        <button class="cta" id="nextStageBtn" style="display:none">Row on</button>
+        <button class="ctaGhost" id="repeatStageBtn" style="display:none">Row stage again</button>
+      </div>
+      <div class="menuBtns">
+        <button class="cta" id="retryBtn">Row again</button>
+        <button class="cta ctaSecondary" id="challengeBtn"><span class="narrowHide">Challenge a friend</span><span class="narrowShow">Challenge</span></button>
+      </div>
+      <div id="challengeMsg" class="hiddenMsg"></div>
+      <!-- always-available exit from the result screen (both Row Race and
+           voyage-stage variants) — straight to the main menu, no confirm
+           needed since the run is already finished/scored, nothing to lose -->
+      <button class="linkBtn" id="resultMenuBtn">Main menu</button>
+      <!-- Row Race: compact top-3 (see paintBoard()'s result-screen branch in
+           main.js — always includes the player's own row even outside top 3),
+           title doubles as the reveal — full board lives in #lbScreen. -->
       <div class="lbWrap" id="lbResultWrap">
-        <div class="lbTitle">🏆 TOPPLISTE</div>
-        <ol id="leaderboard" class="lbList"></ol>
+        <div class="lbTitle" id="lbResultTitle">Top 3 today</div>
+        <div class="lbListFrame"><ol id="leaderboard" class="lbList"></ol></div>
       </div>
-      <button class="cta" id="retryBtn">Ro igjen</button>
+      <button class="linkBtn" id="viewFullLbBtn">View full leaderboard</button>
+    </div>
+
+    <!-- Fase 3e: etappe-mellomsteg — shown between the voyage result screen and
+         the next race, so the player is never unsure which stage comes next.
+         G.mode stays 'finished' the whole time; no race starts until the
+         player explicitly continues. -->
+    <div class="screen hidden" id="stageInterludeScreen">
+      <div class="interludeCard" id="interludeCard">
+        <!-- same video+overlay stack as #voyageStageCardWrap — see the
+             comment there. Separate <video> element (not moved/shared)
+             because both screens can be in the DOM at once; the browser
+             caches the single mp4 either way. -->
+        <div class="interludeMapWrap" id="interludeMapWrap">
+          <div class="mapVideoBox">
+            <video id="interludeMapVideo" class="mapVideo" src="/3d%20map/3dmap_loop.mp4"
+                   poster="/3d%20map/3dmap_poster.jpg"
+                   autoplay loop muted playsinline preload="auto" tabindex="-1"></video>
+            <img id="interludeMapImg" class="mapOverlay stageFadeImg" alt="" decoding="async">
+          </div>
+        </div>
+        <!-- badge lives OUTSIDE the map wrap: the wrap is its own stacking
+             context (z 0), so anything inside it — badge included — would
+             render under the card's scrim gradients (z 1). Out here its
+             z-index 3 puts it above scrims and the route overlay on every
+             stage. -->
+        <img id="interludeStageBadgeImg" class="stageBadgeImg stageFadeImg" alt="" decoding="async">
+
+        <div class="interludeTop">
+          <!-- "✓ STAGE N COMPLETE" hidden per design (the badge already says
+               which stage) — kept in the DOM so the hud wiring still resolves -->
+          <div class="interludeDone" id="interludeDone" style="display:none">
+            <div class="interludeDoneIcon" id="interludeDoneIcon"></div>
+            <div class="interludeDoneText" id="interludeDoneText"></div>
+          </div>
+        </div>
+
+        <!-- moved OUT of .interludeTop (position:relative, but collapses to
+             0x0 once .interludeDone is display:none and this is the only
+             other child) — #interludeTrophyBanner needs .interludeCard
+             itself (position:absolute;inset:0, the full screen) as its
+             containing block for inset:0+margin:auto centering to work; a
+             0x0 containing block resolves to nonsense negative margins. -->
+        <div class="milestoneBanner milestoneBannerTrophy hiddenMsg" id="interludeTrophyBanner"></div>
+
+        <div class="interludeBottom">
+          <!-- "NEXT: STAGE N" + landmark teaser hidden per design — kept in
+               the DOM so the hud wiring still resolves -->
+          <div class="interludeNext" id="interludeNext" style="display:none">
+            <div class="interludeNextLabel" id="interludeNextLabel"></div>
+            <div class="interludeNextLandmark" id="interludeNextLandmark"></div>
+          </div>
+
+          <div class="menuBtns">
+            <button class="cta" id="interludeGoBtn">Row to the next stage!</button>
+          </div>
+          <button id="interludeMenuBtn" class="linkBtn">Back to menu</button>
+        </div>
+      </div>
     </div>
   </div>
 
