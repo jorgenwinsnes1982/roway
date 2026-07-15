@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { MENU_INPUT, initMenuInput, autoDrift } from './menuInput.js';
+import { glDiagCtx, glDiagWatch } from './glDiag.js';
 
 // WebGL shader shield for the splash screen — same treatment as the logo:
 // shared pointer/tilt parallax (true 3D tilt via CSS perspective), travelling
@@ -58,8 +59,28 @@ export function createShieldFX() {
     wrap.appendChild(canvas);
     imgEl.parentNode.insertBefore(wrap, imgEl);
 
-    const renderer = new THREE.WebGLRenderer({ canvas, alpha: true, antialias: true });
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    // LAZY GL — same reason as logo.js's mountShineFX: the context is only
+    // claimed on the first reveal(), never at factory/boot time, so the shine
+    // effects can't push the page over WebKit/iOS's concurrent-WebGL-context
+    // budget while the MAIN game context (created first = evicted first) is
+    // what would get dropped. See glDiag.js / the iPhone 16 Pro blank-canvas
+    // investigation.
+    let renderer = null;
+    let glFailed = false;
+    function ensureGL() {
+      if (renderer || glFailed) return renderer;
+      try {
+        renderer = new THREE.WebGLRenderer({ canvas, alpha: true, antialias: true });
+        glDiagCtx('shieldCanvas');
+        glDiagWatch(canvas, 'shieldCanvas');
+        renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+      } catch (err) {
+        glFailed = true;
+        if (wrap && wrap.parentNode) wrap.parentNode.removeChild(wrap);
+        imgEl.classList.remove('logoHidden'); // <img>/flag-band fallback back on
+      }
+      return renderer;
+    }
     const scene = new THREE.Scene();
     const cam = new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 1);
     const uniforms = {
@@ -116,6 +137,7 @@ export function createShieldFX() {
     scene.add(new THREE.Mesh(new THREE.PlaneGeometry(2, 2), mat));
 
     function resize() {
+      if (!renderer) return; // context not claimed yet (see ensureGL above)
       renderer.setSize(canvas.clientWidth || 1, canvas.clientHeight || 1, false);
     }
     window.addEventListener('resize', resize);
@@ -149,6 +171,7 @@ export function createShieldFX() {
     api.ok = true;
     api.isRunning = () => running;
     api.reveal = () => {
+      if (!ensureGL()) return; // context claimed on FIRST reveal only — see above
       revealTarget = 1;
       wrap.classList.add('in');
       if (!running) {

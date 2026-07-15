@@ -10,6 +10,7 @@ import { createSky, createFjord, createClouds, createCourse, disposeCourse, upda
 import { initAudio, oarSplash, ding, thud, whistle, crowd, kick, hat, bass, whoosh, donk, roVoice, fireworkBoom, setSfxMuted, isSfxMuted, setMusicMuted, isMusicMuted, setMusicDucked, setSeagullScene, hoverSparkle, hornSound, isMusicLoadSettled } from './audio.js';
 import { createLogoFX, createHowtoFX, createVoyageDoneFX } from './logo.js';
 import { createShieldFX } from './shield.js';
+import { glDiag, glDiagCtx, glDiagWatch, glDiagNote } from './glDiag.js';
 import {
   loadVoyage, creditRun, creditBonus, VOYAGE_OUT_M, TOTAL_VOYAGE_M, VOYAGE_STAGES, currentStage,
   getOrCreateVoyageId, loadStageBests, isStageBest, recordStageBest, markStageSubmitted,
@@ -155,6 +156,18 @@ const renderer = new THREE.WebGLRenderer({ antialias: false, powerPreference: 'h
 const IS_MOBILE_GPU = window.matchMedia('(pointer: coarse)').matches
   || navigator.maxTouchPoints > 0
   || 'ontouchstart' in window;
+// iOS/iPadOS specifically (every iOS browser is WebKit, incl. Chrome-on-iOS).
+// iPadOS 13+ masquerades as "MacIntel" desktop — the maxTouchPoints check
+// catches it. Used to scope the composer fallback probe below: only iOS
+// gets AUTO-degraded on a bad framebuffer probe, because (a) it's the
+// platform with the actual blank-canvas bug, (b) WebKit/Metal reports FBO
+// completeness truthfully there, while some desktop/virtualized GL stacks
+// report "incomplete" for pipelines that render perfectly (verified in dev:
+// a working setup reporting 36054 + GL error 1286 on every frame), and (c)
+// a wrong trip on iOS costs slight bloom precision at phone DPR, while a
+// wrong trip on desktop would silently strip MSAA from healthy machines.
+const IS_IOS_WEBKIT = /iP(hone|ad|od)/.test(navigator.userAgent)
+  || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
 const PIXEL_RATIO = Math.min(window.devicePixelRatio, IS_MOBILE_GPU ? 1.5 : 2);
 renderer.setPixelRatio(PIXEL_RATIO);
 renderer.setSize(window.innerWidth, window.innerHeight);
@@ -163,6 +176,43 @@ renderer.toneMapping = THREE.ACESFilmicToneMapping;
 renderer.toneMappingExposure = 1.05;
 app.appendChild(renderer.domElement);
 
+// ---- iPhone 16 Pro / Pro Max blank-canvas investigation (glDiag.js) ----
+// The MAIN game context is created FIRST on the page, which under WebKit's
+// per-page WebGL budget makes it the one evicted ("oldest context lost") if
+// the budget is ever crossed — the shine effects (logo.js/shield.js) used to
+// claim 3 more contexts eagerly at boot and are now lazy for exactly that
+// reason. These hooks record every context's lifecycle so an affected device
+// can show us what actually happened (?dev=roway2026 overlay below).
+// three.js's WebGLRenderer already preventDefault()s webglcontextlost
+// internally (that's what permits restoration) and re-initializes GL state on
+// webglcontextrestored — the handlers here add evidence + kick a re-render.
+glDiagCtx('main');
+glDiagWatch(renderer.domElement, 'main', {
+  onLost: () => glDiagNote('MAIN context lost'),
+  onRestored: () => {
+    glDiagNote('main context restored — re-rendering');
+    // three has re-initialized its GL state by now; textures/targets
+    // re-upload lazily on the next render, so kick one immediately instead
+    // of waiting for the loop (which may be render-throttled on a menu).
+    try { composer.render(); } catch { /* next rAF tick will retry */ }
+  },
+});
+{
+  const gl = renderer.getContext();
+  glDiag.env = {
+    webgl2: typeof WebGL2RenderingContext !== 'undefined' && gl instanceof WebGL2RenderingContext,
+    halfFloatColor: !!gl.getExtension('EXT_color_buffer_half_float'),
+    floatColor: !!gl.getExtension('EXT_color_buffer_float'),
+    maxSamples: gl.MAX_SAMPLES ? gl.getParameter(gl.MAX_SAMPLES) : 0,
+    maxTex: gl.getParameter(gl.MAX_TEXTURE_SIZE),
+    dpr: window.devicePixelRatio,
+    pixelRatio: PIXEL_RATIO,
+    ua: navigator.userAgent,
+  };
+  const e0 = gl.getError();
+  if (e0) glDiag.errors.push({ where: 'renderer-create', code: e0 });
+}
+
 const scene = new THREE.Scene();
 const FOG_COLOR = 0x8fa9cf; // dusky blue — matches the blue-hour sky
 scene.fog = new THREE.Fog(FOG_COLOR, 320, 1150);
@@ -170,7 +220,12 @@ scene.fog = new THREE.Fog(FOG_COLOR, 320, 1150);
 const camera = new THREE.PerspectiveCamera(58, window.innerWidth / window.innerHeight, 0.5, 5200);
 
 // ---- post-processing: bloom makes the sun, water glitter and lanterns glow ----
-const composer = new EffectComposer(
+// `let`, not `const`: rebuildComposerSafe() below can swap in a fallback
+// composer if the fancy half-float MSAA target errors on this device (H2 of
+// the iPhone 16 Pro blank-canvas investigation — iOS/WebKit float-MSAA
+// support is historically fragile). All four passes are shared instances, so
+// the rebuild re-adds the same pass objects to the new composer.
+let composer = new EffectComposer(
   renderer,
   new THREE.WebGLRenderTarget(window.innerWidth, window.innerHeight, {
     samples: 4,
@@ -178,7 +233,8 @@ const composer = new EffectComposer(
   })
 );
 composer.setPixelRatio(PIXEL_RATIO);
-composer.addPass(new RenderPass(scene, camera));
+const renderPass = new RenderPass(scene, camera);
+composer.addPass(renderPass);
 // Bloom runs at half the CSS resolution: bloom is a wide blur, so its down/
 // upsample mip chain is imperceptible at half res (verified by before/after
 // screenshots in menu, race and voyage) while the fullscreen fill cost drops
@@ -241,7 +297,49 @@ const finishPass = new ShaderPass({
   `,
 });
 composer.addPass(finishPass);
-composer.addPass(new OutputPass());
+const outputPass = new OutputPass();
+composer.addPass(outputPass);
+
+// H2 safety net: if the half-float MSAA render target produces a GL error on
+// this device (checked after the deferred pre-warm render below), rebuild the
+// composer around a plain UnsignedByte, non-multisampled target. Visual cost
+// when (and only when) it triggers: slightly less HDR headroom feeding bloom
+// and no RT-level MSAA — a small, iOS-only-in-practice degrade that beats a
+// permanently blank canvas. Never triggers on healthy devices.
+let composerSafeMode = false;
+// last-resort switch: if even the SAFE composer's framebuffer is unusable on
+// this device, frame() renders the scene directly (no bloom/vignette on that
+// device — but the world PAINTS, which beats a permanently blank canvas)
+let composerBypassed = false;
+function rebuildComposerSafe(reason) {
+  if (composerSafeMode) return;
+  composerSafeMode = true;
+  glDiagNote(`composer → safe mode: ${reason}`);
+  const old = composer;
+  composer = new EffectComposer(
+    renderer,
+    new THREE.WebGLRenderTarget(window.innerWidth, window.innerHeight) // UnsignedByte, samples 0
+  );
+  composer.setPixelRatio(PIXEL_RATIO);
+  for (const p of [renderPass, bloomPass, finishPass, outputPass]) composer.addPass(p);
+  composer.setSize(window.innerWidth, window.innerHeight);
+  old.renderTarget1.dispose();
+  old.renderTarget2.dispose();
+}
+// Is the composer's offscreen framebuffer actually usable on this device?
+// If it's incomplete, WebGL silently SKIPS every draw into it — the scene
+// "renders" with no errors thrown and the canvas simply stays blank behind
+// the DOM UI. That is exactly the iPhone 16 Pro / Pro Max symptom (H2): a
+// half-float + 4xMSAA target that older WebKit accepted but iOS-18-era
+// WebKit/Metal rejects. Probe cost: two GL calls, once, at boot.
+function composerFboComplete() {
+  const gl = renderer.getContext();
+  renderer.setRenderTarget(composer.renderTarget1);
+  const status = gl.checkFramebufferStatus(gl.FRAMEBUFFER);
+  renderer.setRenderTarget(null);
+  glDiagNote(`fbo status ${status}${status === gl.FRAMEBUFFER_COMPLETE ? ' (complete)' : ' (INCOMPLETE)'}`);
+  return status === gl.FRAMEBUFFER_COMPLETE;
+}
 
 // lights
 const sunDir = new THREE.Vector3(0.35, 0.32, -0.88).normalize();
@@ -5057,7 +5155,13 @@ function frame(maxDt = 0.05) {
     if (menuRenderAcc < MENU_RENDER_INTERVAL) return; // skip this frame's heavy render
     menuRenderAcc = 0;
   }
-  composer.render();
+  // composerBypassed: last-resort iOS path — the composer's offscreen
+  // framebuffers were refused by this device, so render straight to the
+  // canvas (no post-processing, but the world actually paints). See the
+  // boot-time probe next to rebuildComposerSafe().
+  if (composerBypassed) renderer.render(scene, camera);
+  else composer.render();
+  if (!glDiag.boot.firstLoopRender) glDiag.boot.firstLoopRender = Math.round(performance.now());
 }
 renderer.setAnimationLoop(() => frame());
 // Shader pre-warm: compile every scene material and warm the post-processing
@@ -5075,8 +5179,32 @@ renderer.setAnimationLoop(() => frame());
 // original goal (no visible hitch once the player can actually see the
 // canvas) is preserved.
 setTimeout(() => {
+  glDiag.boot.prewarmStart = Math.round(performance.now());
   renderer.compile(scene, camera);
+  glDiag.boot.compileDone = Math.round(performance.now());
   composer.render();
+  // Evidence, all platforms (informational only — the error queue is too
+  // noisy to act on: a fully WORKING desktop/virtualized GL stack was
+  // observed reporting 1286 + "framebuffer incomplete" on every frame while
+  // rendering perfectly, see composerFboComplete's comment):
+  const bootErr = renderer.getContext().getError();
+  if (bootErr) glDiag.errors.push({ where: 'prewarm-render', code: bootErr, t: Math.round(performance.now()) });
+  // H2 ACTION — iOS/WebKit only (see IS_IOS_WEBKIT for why the auto-degrade
+  // is scoped): if the fancy half-float MSAA target's framebuffer is
+  // incomplete, every draw into it is silently skipped and the world never
+  // paints. Swap to the safe composer; if even THAT framebuffer is refused,
+  // bypass the composer entirely — plain rendering has no offscreen target
+  // to reject, so the world is guaranteed to paint (minus bloom/vignette on
+  // that device only).
+  if (IS_IOS_WEBKIT && !composerFboComplete()) {
+    rebuildComposerSafe('iOS: half-float MSAA framebuffer incomplete');
+    composer.render();
+    if (!composerFboComplete()) {
+      composerBypassed = true;
+      glDiagNote('iOS: safe framebuffer ALSO incomplete — bypassing composer (direct render)');
+    }
+  }
+  glDiag.boot.prewarmDone = Math.round(performance.now());
 }, 0);
 // Fallback: if rAF stalls (embedded/backgrounded preview panels), keep the game
 // stepping via a timer so it never freezes mid-countdown or mid-race.
@@ -5096,7 +5224,9 @@ setInterval(() => {
 // works under `npm run dev`.
 if (DEV_TOOLS) {
   window.__game = {
-    G, R, T, GH, C, INTRO, logoFX, shieldFX, howtoFX, renderer, composer, ship, rival, spawnFireworkBurst,
+    G, R, T, GH, C, INTRO, logoFX, shieldFX, howtoFX, renderer, ship, rival, spawnFireworkBurst,
+    // getter, not a plain ref — rebuildComposerSafe() can swap the composer
+    get composer() { return composer; },
     dailySeed: DAILY_SEED, get waterT() { return waterT; },
     get voyage() { return voyage; }, set voyage(v) { voyage = v; }, shipData,
     LETTER, loadMissions, loadLetters,
@@ -5153,6 +5283,46 @@ if (DEV_TOOLS) {
   setInterval(() => {
     spoleBtn.style.display = (G.mode === 'racing' && !G.paused) ? 'flex' : 'none';
   }, 250);
+
+  // ---- on-device WebGL diagnostics overlay (iPhone 16 Pro blank-canvas hunt) ----
+  // Only exists behind ?dev=roway2026. Shows the glDiag.js evidence live on
+  // the phone so a screenshot answers: how many contexts were created and
+  // when, did the MAIN context get lost (H1), did the half-float MSAA target
+  // error and trip the safe-composer fallback (H2), boot phase timings, and
+  // the exact WebKit build (UA). Tap the panel to dismiss it.
+  const glPanel = document.createElement('pre');
+  glPanel.id = 'glDiagPanel';
+  glPanel.style.cssText = [
+    'position:fixed', 'left:8px', 'right:8px', 'bottom:8px', 'z-index:9999',
+    'margin:0', 'padding:8px 10px', 'border-radius:8px',
+    'font:10px/1.5 ui-monospace,Menlo,Consolas,monospace',
+    'color:#9fe870', 'background:rgba(0,0,0,.78)',
+    'border:1px solid rgba(159,232,112,.4)',
+    'white-space:pre-wrap', 'word-break:break-all',
+    'max-height:45vh', 'overflow:auto', 'pointer-events:auto',
+  ].join(';');
+  glPanel.addEventListener('pointerdown', () => glPanel.remove());
+  document.body.appendChild(glPanel);
+  const fmtEvts = (a) => a.map((c) => `${c.id}@${c.t}ms`).join('  ') || '—';
+  setInterval(() => {
+    if (!document.body.contains(glPanel)) return;
+    const gl = renderer.getContext();
+    const env = glDiag.env;
+    glPanel.textContent = [
+      'ROWAY GL DIAG (tap to close)',
+      `mainContextLost NOW: ${gl.isContextLost()}   safeComposer: ${composerSafeMode}   bypassed: ${composerBypassed}   ios: ${IS_IOS_WEBKIT}`,
+      `ctx created: ${fmtEvts(glDiag.ctx)}`,
+      `ctx LOST:    ${fmtEvts(glDiag.lost)}`,
+      `ctx restored:${fmtEvts(glDiag.restored)}`,
+      `glErrors: ${glDiag.errors.map((e) => `${e.where}:${e.code}`).join('  ') || '—'}`,
+      `notes: ${glDiag.notes.join(' | ') || '—'}`,
+      `boot(ms): ${JSON.stringify(glDiag.boot)}`,
+      `env: webgl2=${env.webgl2} halfFloat=${env.halfFloatColor} float=${env.floatColor} maxSamples=${env.maxSamples} maxTex=${env.maxTex}`,
+      `dpr=${env.dpr} pixelRatio=${env.pixelRatio}`,
+      `info: draws=${renderer.info.render.calls} tex=${renderer.info.memory.textures} geo=${renderer.info.memory.geometries} prog=${renderer.info.programs ? renderer.info.programs.length : '?'}`,
+      `ua: ${env.ua}`,
+    ].join('\n');
+  }, 700);
 }
 
 // Guard against no-op resizes. On mobile the address bar showing/hiding fires
@@ -5173,3 +5343,7 @@ window.addEventListener('resize', () => {
   composer.setSize(w, h);
   bloomPass.setSize(w * BLOOM_RES_SCALE, h * BLOOM_RES_SCALE);
 });
+
+// boot phase marker for the glDiag overlay: how long the synchronous module
+// body itself took (JS parse/eval + world build) before the loop could start
+glDiag.boot.moduleEval = Math.round(performance.now());

@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { MENU_INPUT, initMenuInput, autoDrift } from './menuInput.js';
+import { glDiagCtx, glDiagWatch } from './glDiag.js';
 
 // Shared "premium key-art" FX: a tiny dedicated WebGL renderer that draws an
 // image on a full-quad plane with a travelling diagonal shine, plus a shared
@@ -60,8 +61,35 @@ function mountShineFX(anchorEl, opts) {
     anchorEl.parentNode.insertBefore(canvas, anchorEl);
     if (opts.initAspect) canvas.style.aspectRatio = opts.initAspect;
 
-    const renderer = new THREE.WebGLRenderer({ canvas, alpha: true, antialias: true });
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    // LAZY GL: the WebGL context is only claimed on the FIRST reveal(), not
+    // here at factory time. iOS/WebKit enforces a per-page budget on
+    // concurrent WebGL contexts (count AND GPU memory) and silently evicts
+    // the OLDEST context when it's crossed — which is the MAIN game renderer,
+    // since main.js creates it before these shine effects. Creating all the
+    // shine contexts eagerly put 4 live contexts on the page before the first
+    // frame, which is the prime suspect for the iPhone 16 Pro / Pro Max
+    // "world never paints" bug (worked on iPhone 12). Deferring to reveal()
+    // keeps boot at exactly ONE context (the game) and only adds a shine
+    // context once its host screen is actually on screen. The scene graph
+    // below stays eager — THREE objects are GL-free until first render.
+    let renderer = null;
+    let glFailed = false;
+    function ensureGL() {
+      if (renderer || glFailed) return renderer;
+      try {
+        renderer = new THREE.WebGLRenderer({ canvas, alpha: true, antialias: true });
+        glDiagCtx(opts.canvasId || 'shine');
+        glDiagWatch(canvas, opts.canvasId || 'shine');
+        renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+      } catch (err) {
+        // WebGL refused at reveal time — restore the plain-DOM fallback,
+        // exactly like the factory-time catch below used to.
+        glFailed = true;
+        if (canvas.parentNode) canvas.parentNode.removeChild(canvas);
+        anchorEl.classList.remove(opts.hideClass || 'logoHidden');
+      }
+      return renderer;
+    }
 
     const scene = new THREE.Scene();
     const cam = new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 1);
@@ -103,6 +131,7 @@ function mountShineFX(anchorEl, opts) {
     scene.add(new THREE.Mesh(new THREE.PlaneGeometry(2, 2), mat));
 
     function resize() {
+      if (!renderer) return; // context not claimed yet (see ensureGL above)
       renderer.setSize(canvas.clientWidth || 1, canvas.clientHeight || 1, false);
     }
     window.addEventListener('resize', resize);
@@ -140,6 +169,7 @@ function mountShineFX(anchorEl, opts) {
     api.ok = true;
     api.isRunning = () => running;
     api.reveal = () => {
+      if (!ensureGL()) return; // context claimed on FIRST reveal only — see above
       canvas.classList.add('in');
       if (!running) {
         running = true;
