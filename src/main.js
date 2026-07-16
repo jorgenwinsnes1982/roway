@@ -1443,7 +1443,7 @@ const hud = {
   resultMenuBtn: $('resultMenuBtn'),
   saveRow: $('saveRow'), aliasInput: $('aliasInput'), saveScoreBtn: $('saveScoreBtn'), savedMsg: $('savedMsg'),
   lbNameHeadline: $('lbNameHeadline'), lbNameSubtext: $('lbNameSubtext'), lbNameError: $('lbNameError'),
-  leaderboard: $('leaderboard'), lbStart: $('lbStart'),
+  leaderboard: $('leaderboard'), lbStart: $('lbStart'), aboutBody: $('aboutBody'),
   placeBanner: $('placeBanner'), skipSaveBtn: $('skipSaveBtn'), lbResultWrap: $('lbResultWrap'), retryBtn: $('retryBtn'),
   resultTicker: $('resultTicker'),
   lbResultTitle: $('lbResultTitle'), viewFullLbBtn: $('viewFullLbBtn'),
@@ -2676,6 +2676,26 @@ function escapeHtml(s) {
 // list (visually set apart) when their rank puts them outside it. Never
 // duplicated if they're already shown in `list` itself.
 //
+// Modal scroll-fade (see .scrollFade/.atBottom in index.html): a scrollable
+// modal body fades its last visible line into the box's bottom edge instead
+// of hard-clipping mid-sentence when there's more content below. Toggling
+// .atBottom off/on via scroll position means the fade only shows while
+// there's genuinely more to scroll to — reaching the true end (or never
+// needing to scroll at all, e.g. a short leaderboard) shows the real final
+// line untouched. Returns the update fn so the caller can re-trigger it
+// after changing the element's content (paintBoard, etc.).
+function initScrollFade(el) {
+  if (!el) return () => {};
+  const update = () => {
+    el.classList.toggle('atBottom', el.scrollTop + el.clientHeight >= el.scrollHeight - 2);
+  };
+  el.addEventListener('scroll', update, { passive: true });
+  update();
+  return update;
+}
+const updateAboutScrollFade = initScrollFade(hud.aboutBody);
+const updateLbScrollFade = initScrollFade(hud.lbStart);
+
 // Result redesign: the result screen's #leaderboard now shows only the TOP 3
 // (see "TOP 3 TODAY" — the full list moved to the standalone Leaderboard
 // modal, #lbStart, reached via "View full leaderboard"). Both render from the
@@ -2697,6 +2717,7 @@ function paintBoard(list, highlightId = null, day = null, selfRow = null) {
     fullHtml += `<li class="me lbSelfRow" data-rank="${selfRow.rank}.">${row(selfRow.entry)}</li>`;
   }
   hud.lbStart.innerHTML = fullHtml;
+  updateLbScrollFade(); // content height just changed — re-measure whether there's more to scroll to
 
   // top 3 — result screen. Always shows the player's own row (from selfRow,
   // or their real rank within `list`) if they're not already in the top 3, so
@@ -3370,6 +3391,7 @@ settingsClose.addEventListener('click', (e) => { e.currentTarget.blur(); closeSe
 $('aboutBtn').addEventListener('click', (e) => {
   e.currentTarget.blur();
   $('aboutScreen').classList.remove('hidden');
+  updateAboutScrollFade(); // re-measure now that the (visibility:hidden-but-laid-out) body is actually visible
 });
 $('aboutCloseBtn').addEventListener('click', (e) => {
   e.currentTarget.blur();

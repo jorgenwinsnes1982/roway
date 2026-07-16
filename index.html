@@ -543,6 +543,20 @@
     }
     .aboutBody p { margin: 0 0 14px; }
     .aboutBody p:last-child { margin-bottom: 0; }
+    /* Modal scroll-fade: when a scrollable modal body has more content
+       below the fold, the last visible line fades into the box's bottom
+       edge instead of being hard-clipped mid-sentence. initScrollFade()
+       (main.js) toggles .atBottom off/on via a scroll listener so the
+       fade only shows while there's genuinely more to scroll to — it
+       never eats the real final line once you've reached the bottom. */
+    .scrollFade {
+      -webkit-mask-image: linear-gradient(to bottom, #000 calc(100% - 28px), transparent 100%);
+              mask-image: linear-gradient(to bottom, #000 calc(100% - 28px), transparent 100%);
+    }
+    .scrollFade.atBottom {
+      -webkit-mask-image: none;
+              mask-image: none;
+    }
     /* ---- premium editorial pass, modelled on winsen.no's About page:
        small tracked section labels break the wall of text into scannable
        chapters, an opening lede fades from a bold statement into muted
@@ -612,15 +626,19 @@
        flourish above the printed title, not its own headline. */
     .aboutSignatureImg {
       display: block; margin: 0 auto 10px;
-      width: min(114px, 29%); height: auto;
+      width: min(137px, 35%); height: auto;
     }
     /* position/title — the one thing the signature mark no longer carries
-       on its own, printed cleanly underneath it */
+       on its own, printed cleanly underneath it. Domine (not Cinzel/caps —
+       Cinzel has no true lowercase, same reasoning as the story body
+       copy), and narrow enough to read as a caption under the signature
+       rather than stretching the full modal width. */
     .aboutByline .aboutRole {
-      font-family: "Cinzel", serif; font-size: 13px; font-weight: 700;
-      letter-spacing: 1.5px; text-transform: uppercase;
+      font-family: "Domine", serif; font-size: 13.5px; font-weight: 500;
+      letter-spacing: .2px;
       color: rgba(255, 255, 255, .65);
       line-height: 1.7;
+      max-width: 230px; margin: 0 auto;
     }
     .aboutByline strong { color: #fff; font-weight: 700; }
     .aboutByline a {
@@ -2333,7 +2351,7 @@
     <div class="screen hidden" id="aboutScreen">
       <div class="confirmBox">
         <button class="modalClose" id="aboutCloseBtn" aria-label="Close">✕</button>
-        <div class="aboutBody">
+        <div class="aboutBody scrollFade" id="aboutBody">
           <p class="aboutOpening"><strong>Hi, I'm Jørgen Winsnes.</strong> <span class="aboutFade">I'm a Design Director working across brand, product and experience.</span></p>
           <p>I created ROWAY as a ten-day AI challenge to see how far I could take one original idea, working only in the evenings.</p>
 
@@ -2615,7 +2633,7 @@
           <button class="lbSegBtn" id="lbTabAll">All-time</button>
         </div>
         <div class="lbWrap">
-          <div class="lbListFrame"><ol id="lbStart" class="lbList"></ol></div>
+          <div class="lbListFrame"><ol id="lbStart" class="lbList scrollFade"></ol></div>
         </div>
       </div>
 
