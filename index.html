@@ -389,7 +389,7 @@
       pointer-events: none;
     }
     .modalClose {
-      position: absolute; top: 12px; right: 14px; width: 30px; height: 30px;
+      position: absolute; top: 24px; right: 28px; width: 30px; height: 30px;
       border-radius: 50%; display: flex; align-items: center; justify-content: center;
       font-size: 18px; line-height: 1; cursor: pointer; color: #fff; font-family: inherit;
       background: rgba(255,255,255,.1); border: 1px solid rgba(255,255,255,.25);
@@ -596,18 +596,24 @@
       border-top: 1px solid rgba(185, 138, 62, .28);
       font-size: 14.5px; line-height: 1.6; color: rgba(255, 255, 255, .72);
     }
-    /* the actual signed name — Jørgen's own signature asset (public/sign.svg:
-       cursive "Jørgen Winsnes" + "Design Director / Brand, Product &
-       Experience" caption, baked into one graphic at its native colours),
-       the same sign-off winsen.no closes its own About page with */
+    /* the actual signed name — Jørgen's own cursive signature mark
+       (public/sign.svg, 171x65, its native lime-green), the same sign-off
+       winsen.no closes its own About page with. Sized to read as a compact
+       flourish ABOVE the printed title, not as its own headline — at this
+       aspect ratio (2.6:1, much squarer than the old wide lockup this
+       replaced) matching the old 300px width would render it ~115px tall
+       and blow out the whole block. */
     .aboutSignatureImg {
-      display: block; margin: 0 auto 6px;
-      width: min(300px, 78%); height: auto;
+      display: block; margin: 0 auto 10px;
+      width: min(190px, 48%); height: auto;
     }
+    /* position/title — the one thing the signature mark no longer carries
+       on its own, printed cleanly underneath it */
     .aboutByline .aboutRole {
-      font-family: "Cinzel", serif; font-size: 11px; font-weight: 700;
-      letter-spacing: 2px; text-transform: uppercase;
-      color: rgba(255, 255, 255, .55);
+      font-family: "Cinzel", serif; font-size: 13px; font-weight: 700;
+      letter-spacing: 1.5px; text-transform: uppercase;
+      color: rgba(255, 255, 255, .65);
+      line-height: 1.7;
     }
     .aboutByline strong { color: #fff; font-weight: 700; }
     .aboutByline a {
@@ -2349,8 +2355,7 @@
 
           <p class="aboutSign aboutSignLong">AI can produce. But someone still has to find the idea, set the direction and make everything work together.</p>
           <div class="aboutByline">
-            <img class="aboutSignatureImg" src="/sign.svg" alt="Signed, Jørgen Winsnes — Design Director, Brand, Product &amp; Experience">
-            <p><strong>Jørgen Winsnes</strong></p>
+            <img class="aboutSignatureImg" src="/sign.svg" alt="Signed, Jørgen Winsnes">
             <p class="aboutRole">Design Director — Brand, Product &amp; Experience<br>Winsen AS</p>
             <p class="aboutContact">
               <a href="mailto:jorgen@winsen.no">jorgen@winsen.no</a><br>
