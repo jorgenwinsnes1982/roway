@@ -888,9 +888,15 @@
        all in one image, so this single canvas now stands in for what used
        to be two separate elements (shield + wordmark) */
     #logoCanvas {
-      width: min(87vw, 630px);
+      width: min(87vw, 46vh, 630px);
       aspect-ratio: 1448 / 1086;
-      /* +15% on mobile only — see the max-width:640px rule below */
+      /* the 46vh cap is what keeps this from dominating a SHORT-but-wide
+         window (a small MacBook, or any browser resized narrower in height
+         only) — vw alone never reacts to height, so a plain 87vw/630px logo
+         stayed full-size no matter how little vertical room was left,
+         pushing the buttons + credit line into an overlapping mess. See the
+         max-height media query below for the rest of that fit. +15% on
+         mobile only — see the max-width:640px rule below */
       display: block;
       pointer-events: none; /* purely visual — clicks pass straight through */
       opacity: 0;
@@ -2312,6 +2318,24 @@
       #resultTicker { margin: 10px 0; }
       #resultScreen .menuBtns { margin-top: 4px; }
       .lbWrap { margin-top: 6px; }
+    }
+    /* Short viewports at ANY width — a small MacBook window, a browser with
+       lots of chrome eating vertical space, split-view/windowed desktop
+       browsers. The tight-fit rules above only ever fire on narrow (mobile)
+       widths, so a plain desktop-width-but-short window hit the exact same
+       overflow (splash logo + copy + both button rows taller than the
+       viewport) with nothing to compact it — the fixed-to-bottom credit
+       line then sat on top of the Leaderboard/About row instead of below
+       it. Same compacting recipe as the mobile block, gated on height only
+       so it also stacks with the mobile rules for phones in landscape. */
+    @media (max-height: 820px) {
+      #logoCanvas { width: min(87vw, 30vh, 630px); }
+      #howtoLogoCanvas, .howtoTitleImg { width: min(304px, 57.6vw, 20vh); }
+      .screen { gap: 8px; padding-top: 14px; padding-bottom: 14px; }
+      #howtoScreen .introText, #startScreen .introText { margin-bottom: 6px; }
+      .menuBtns { gap: 8px; }
+      .menuBtns--stack { gap: 8px; }
+      #startScreen .creditLine { bottom: 6px; font-size: 11px; }
     }
   </style>
 </head>
