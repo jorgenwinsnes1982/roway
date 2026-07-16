@@ -5240,6 +5240,63 @@ setTimeout(() => {
   }
   glDiag.boot.prewarmDone = Math.round(performance.now());
 }, 0);
+
+// ---- iOS paint-correctness probe (the decisive iPhone 16 Pro evidence) ----
+// The on-device overlay showed: loop alive (frames 1252), full scene
+// uploaded and drawn (tex=43 geo=105 prog=56 — identical to healthy desktop),
+// zero GL/JS errors, framebuffer COMPLETE… and the canvas centre pixel
+// still [0,0,0,255]. Everything *executes*; the OUTPUT is black. Meanwhile
+// the logo shine canvas — plain WebGL, no composer — renders fine on the
+// same phone. So the failure lives inside the composer pipeline on iOS-18
+// Metal-ANGLE (half-float MSAA resolve, or bloom/finish producing NaN),
+// all of which report "complete"/"no error" while resolving to black.
+// Completeness can't catch that — only reading real output pixels can:
+// sample the canvas centre AND an upper "sky" point (the sky/fog gradient
+// is never pure black in any game state — intro, menu, race, result). Both
+// stone-black on consecutive checks = the pipeline is provably painting
+// black → escalate: fancy composer → safe composer → no composer (direct
+// render, the exact path the working logo canvas uses). Each escalation is
+// re-verified the next second, and the winning layer is recorded in the
+// notes so the permanent fix can target the right stage. iOS only; probes
+// stop after the first healthy read or ~8 attempts (≈1ms readback each).
+function canvasPaintsBlack() {
+  try {
+    if (composerBypassed) renderer.render(scene, camera);
+    else composer.render();
+    const gl = renderer.getContext();
+    const w = gl.drawingBufferWidth, h = gl.drawingBufferHeight;
+    const mid = new Uint8Array(4), sky = new Uint8Array(4);
+    gl.readPixels((w / 2) | 0, (h / 2) | 0, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, mid);
+    gl.readPixels((w / 2) | 0, (h * 0.75) | 0, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, sky); // GL y-up: 0.75h = upper quarter = sky
+    glDiag.pixel = { f: glDiag.frames, rgba: Array.from(mid), sky: Array.from(sky) };
+    return mid[0] + mid[1] + mid[2] === 0 && sky[0] + sky[1] + sky[2] === 0;
+  } catch (e) {
+    glDiagNote(`paint probe failed: ${e && e.message ? e.message : e}`);
+    return false; // can't verify — never escalate blindly
+  }
+}
+if (IS_IOS_WEBKIT) {
+  let paintChecks = 0;
+  const paintProbe = setInterval(() => {
+    if (!glDiag.boot.preloaderHidden) return; // world isn't supposed to be visible yet
+    paintChecks++;
+    if (!canvasPaintsBlack()) {
+      glDiagNote(`iOS paint OK (check ${paintChecks}, safe=${composerSafeMode}, bypass=${composerBypassed})`);
+      clearInterval(paintProbe);
+      return;
+    }
+    if (!composerSafeMode) {
+      rebuildComposerSafe('iOS: canvas paints pure black on the half-float MSAA composer');
+    } else if (!composerBypassed) {
+      composerBypassed = true;
+      glDiagNote('iOS: still black on safe composer — bypassing composer (direct render)');
+    } else {
+      glDiagNote('iOS: still black even with direct render');
+      clearInterval(paintProbe);
+    }
+    if (paintChecks >= 8) clearInterval(paintProbe);
+  }, 1000);
+}
 // Fallback: if rAF stalls (embedded/backgrounded preview panels), keep the game
 // stepping via a timer so it never freezes mid-countdown or mid-race.
 // Larger dt cap here so throttled timers still make reasonable progress;
