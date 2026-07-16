@@ -132,11 +132,7 @@
        Marcellus instead. -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400..900&family=Marcellus&family=Alex+Brush&display=swap" rel="stylesheet">
-  <!-- Alex Brush: one signature-style script weight, used ONLY for the
-       creator's name in the About modal's sign-off (.aboutSignature) — the
-       same "cursive name in the accent colour" device winsen.no uses to
-       close its own About page. -->
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400..900&family=Marcellus&display=swap" rel="stylesheet">
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
     /* hard-lock to the device width: overflow:hidden alone doesn't stop iOS
@@ -490,7 +486,7 @@
       border-radius: 10px;
       box-shadow: 0 0 0 3px rgba(8, 7, 6, .85), 0 0 0 4px rgba(185, 138, 62, .5),
                   inset 0 0 26px rgba(0, 0, 0, .6);
-      padding: 56px 28px 28px;
+      padding: 44px 28px 28px;
       max-width: min(600px, 92vw);
     }
     #aboutScreen .confirmBox::before {
@@ -597,12 +593,13 @@
       border-top: 1px solid rgba(185, 138, 62, .28);
       font-size: 14.5px; line-height: 1.6; color: rgba(255, 255, 255, .72);
     }
-    /* the actual signed name — one cursive weight, gold, same device
-       winsen.no closes its own About page with */
-    .aboutSignature {
-      font-family: "Alex Brush", cursive; font-size: 40px; line-height: 1;
-      color: #ffd25e; text-shadow: 0 0 10px rgba(255, 210, 94, .3);
-      margin-bottom: 4px;
+    /* the actual signed name — Jørgen's own signature asset (public/sign.svg:
+       cursive "Jørgen Winsnes" + "Design Director / Brand, Product &
+       Experience" caption, baked into one graphic at its native colours),
+       the same sign-off winsen.no closes its own About page with */
+    .aboutSignatureImg {
+      display: block; margin: 0 auto 6px;
+      width: min(300px, 78%); height: auto;
     }
     .aboutByline .aboutRole {
       font-family: "Cinzel", serif; font-size: 11px; font-weight: 700;
@@ -2310,7 +2307,6 @@
     <div class="screen hidden" id="aboutScreen">
       <div class="confirmBox">
         <button class="modalClose" id="aboutCloseBtn" aria-label="Close">✕</button>
-        <div class="confirmTitle">About the game</div>
         <div class="aboutBody">
           <p class="aboutOpening"><strong>Hi, I'm Jørgen Winsnes.</strong> <span class="aboutFade">I'm a Design Director working across brand, product and experience.</span></p>
 
@@ -2338,8 +2334,8 @@
 
           <p class="aboutSign aboutSignLong">AI can produce. But someone still has to find the idea, set the direction and make everything work together.</p>
           <div class="aboutByline">
-            <p class="aboutSignature">Jørgen Winsnes</p>
-            <p class="aboutRole">Design Director — Brand, Product &amp; Experience<br>Winsen AS</p>
+            <img class="aboutSignatureImg" src="/sign.svg" alt="Signed, Jørgen Winsnes — Design Director, Brand, Product &amp; Experience">
+            <p class="aboutRole">Winsen AS</p>
             <p class="aboutContact">Questions or interested in working together?<br>
               <strong><a href="mailto:jorgen@winsen.no">jorgen@winsen.no</a></strong><br>
               <strong><a href="tel:+4792883928">+47 928 83 928</a></strong>
