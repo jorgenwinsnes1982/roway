@@ -2546,6 +2546,9 @@ function applyResultNameState(state, opts = {}) {
   hud.lbNameSubtext.classList.toggle('hiddenMsg', !showForm);
   hud.lbNameSubtext.textContent = 'Enter your name so others know who to beat.';
   hud.saveRow.style.display = showForm ? 'flex' : 'none';
+  // the empty error line only reserves its anti-layout-shift space while the
+  // form is visible — see #lbNameError:not(.reserveSpace) in index.html
+  hud.lbNameError.classList.toggle('reserveSpace', showForm);
   // Row Race no longer offers a "skip" — claiming your place is the only way
   // forward (this button is Row-Race-only state; voyage's own stage-5 name
   // prompt in finishRace() still shows #skipSaveBtn directly, untouched here)

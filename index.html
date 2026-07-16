@@ -596,11 +596,6 @@
       margin: 52px 0 10px;
     }
     .aboutBody > .aboutEyebrow:first-child { margin-top: 0; }
-    /* opening line: the bold statement carries the weight, the supporting
-       clause fades — same paragraph, two voices, no extra vertical space */
-    .aboutOpening { font-size: 23px; line-height: 1.5; }
-    .aboutOpening strong { color: #fff; font-weight: 700; }
-    .aboutFade { color: rgba(255, 255, 255, .52); }
     /* "RO!" — the one-word chant gets a real display moment instead of
        sitting in the body-copy rhythm like every other line */
     .aboutChant {
@@ -649,6 +644,11 @@
     .aboutSignatureImg {
       display: block; margin: 0 auto 10px;
       width: min(137px, 35%); height: auto;
+    }
+    /* printed name directly under the cursive signature mark */
+    .aboutByline .aboutName {
+      font-family: "Domine", serif; font-size: 15px; font-weight: 700;
+      letter-spacing: .3px; color: #fff; margin: 0 auto 2px;
     }
     /* position/title — the one thing the signature mark no longer carries
        on its own, printed cleanly underneath it. Domine (not Cinzel/caps —
@@ -1741,12 +1741,20 @@
     }
     #saveScoreBtn:disabled { opacity: .5; cursor: not-allowed; }
     /* reserved space so the error line appearing/disappearing never shifts
-       the buttons below it */
+       the buttons below it — but ONLY while the name form is on screen
+       (.reserveSpace, toggled in setResultNameState): in the claimed state
+       the invisible reserve just read as a dead 40px+ gap between the bonus
+       chip and the ROW AGAIN / CHALLENGE buttons */
     #lbNameError {
       font-size: 12px; font-weight: 700; color: #ff9d9d; letter-spacing: .3px;
       min-height: 16px; margin-top: 2px;
     }
     #lbNameError:empty { visibility: hidden; }
+    #lbNameError:not(.reserveSpace) { display: none; }
+    /* claimed state: ~50% of the old chip → buttons distance, and a bit
+       more air between the buttons and the TOP 3 list below them */
+    #resultScreen .menuBtns { margin-top: 8px; }
+    #resultScreen .lbWrap { margin-top: 10px; }
     /* sits directly under the Claim button (+ reserved error space) — a
        small, clearly-secondary step, not a peer action beside it */
     #skipSaveBtn { min-height: 44px; box-sizing: border-box; display: inline-flex; align-items: center; margin-top: -2px; }
@@ -2320,8 +2328,6 @@
     @media (max-width: 640px) and (min-height: 760px) {
       #resultScreen { gap: 16px; }
       #resultTicker { margin: 10px 0; }
-      #resultScreen .menuBtns { margin-top: 4px; }
-      .lbWrap { margin-top: 6px; }
     }
     /* Short viewports at ANY width — a small MacBook window, a browser with
        lots of chrome eating vertical space, split-view/windowed desktop
@@ -2429,8 +2435,8 @@
       <div class="confirmBox">
         <button class="modalClose" id="aboutCloseBtn" aria-label="Close">✕</button>
         <div class="aboutBody scrollFade" id="aboutBody">
-          <p class="aboutOpening"><strong>Hi, I'm Jørgen Winsnes.</strong> <span class="aboutFade">I'm a Design Director working across brand, product and experience.</span></p>
-          <p>I created ROWAY as a ten-day AI challenge to see how far I could take one original idea, working only in the evenings.</p>
+          <p class="aboutEyebrow">ROWAY</p>
+          <p>I created ROWAY as a short AI challenge: How far could I take one original idea, working only in the evenings?</p>
 
           <p class="aboutEyebrow">The Idea</p>
           <p>The idea came after the Norway–Brazil match.</p>
@@ -2444,20 +2450,21 @@
 
           <p class="aboutEyebrow">The Mechanic</p>
           <p>I chose to build a game around rowing—a mechanic with few clear references or established patterns to follow.</p>
-          <p>The challenge was to turn a physical rowing stroke into a simple, rhythmic and satisfying game mechanic:</p>
-          <p class="aboutManifesto">Hold to charge the stroke.<br>Release at the right moment.<br>Transfer the stored power into the oars.<br>Complete the stroke and propel the boat forward.<br>Keep the entire crew rowing in sync.</p>
+          <p>The challenge was to turn a physical rowing stroke into a simple, rhythmic and satisfying interaction:</p>
+          <p class="aboutManifesto">Hold to charge the stroke.<br>Release to transfer the stored power into the oars.<br>Propel the boat forward and keep the crew in sync.</p>
           <p class="aboutMission">The mission: Row to the USA. Bring the World Cup trophy home to Ullevaal.</p>
 
           <p class="aboutEyebrow">The Process</p>
-          <p>I created the concept, game mechanics, design, art direction and user experience. AI tools and custom agents became my multidisciplinary production team across code, 3D, animation, audio, testing and performance optimization.</p>
+          <p>I created the concept, game mechanics, design, art direction, user experience and production. AI tools and custom agents became my multidisciplinary production team across code, 3D, animation, audio, testing and performance optimization.</p>
           <p>ROWAY was not created with one prompt. It took hundreds of iterations, experiments, rejected outputs and carefully directed decisions.</p>
-          <p>Every visual was AI-generated, then selected, directed and refined into one consistent Viking-inspired world.</p>
+          <p>Every visual was AI-generated, then selected, refined and art-directed into one consistent Viking-inspired world.</p>
           <p>The tools produced the material. I made the decisions.</p>
-          <p>I built ROWAY in roughly ten evenings.</p>
+          <p>I built ROWAY over a handful of evenings.</p>
 
           <p class="aboutSign aboutSignLong">AI can produce. But someone still has to find the idea, set the direction and make everything work together.</p>
           <div class="aboutByline">
             <img class="aboutSignatureImg" src="/sign.svg" alt="Signed, Jørgen Winsnes">
+            <p class="aboutName">Jørgen Winsnes</p>
             <p class="aboutRole">Design Director — Brand, Product &amp; Experience<br>Winsen AS</p>
             <p class="aboutContact">
               <a href="mailto:jorgen@winsen.no">jorgen@winsen.no</a><br>
