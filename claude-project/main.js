@@ -5180,18 +5180,23 @@ function frameInner(maxDt) {
   if (composerBypassed) renderer.render(scene, camera);
   else composer.render();
   if (!glDiag.boot.firstLoopRender) glDiag.boot.firstLoopRender = Math.round(performance.now());
-  // paint-proof (dev-gated, ~once/sec): sample the canvas centre right after
-  // the render, in the SAME task — valid without preserveDrawingBuffer. A
-  // non-black rgba proves the world is genuinely painted to the drawing
-  // buffer; persistent [0,0,0,255]/[0,0,0,0] proves a black/empty canvas
-  // even though every GL status check reads healthy. The readPixels sync
-  // stall (~1ms) only exists behind ?dev=roway2026.
-  if (DEV_TOOLS && glDiag.frames % 60 === 0) {
+  // paint-proof sampling (~once/sec): read two pixels right after the
+  // render, in the SAME task — valid without preserveDrawingBuffer. Centre
+  // + an upper "sky" point (the sky/fog gradient is never pure black in any
+  // game state). Runs behind ?dev=roway2026 (overlay evidence) AND always
+  // on iOS, where it feeds the persistent paint watchdog below — the
+  // iPhone 16 Pro's output provably dies to black mid-session while every
+  // GL status check stays green, so real output pixels are the only signal
+  // that catches it. Cost: two 1px readbacks ~every 60th frame.
+  if ((DEV_TOOLS || IS_IOS_WEBKIT) && glDiag.frames % 60 === 0) {
     try {
       const gl = renderer.getContext();
-      const px = new Uint8Array(4);
-      gl.readPixels((gl.drawingBufferWidth / 2) | 0, (gl.drawingBufferHeight / 2) | 0, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, px);
-      glDiag.pixel = { f: glDiag.frames, rgba: Array.from(px) };
+      const w = gl.drawingBufferWidth, h = gl.drawingBufferHeight;
+      const mid = new Uint8Array(4), sky = new Uint8Array(4);
+      gl.readPixels((w / 2) | 0, (h / 2) | 0, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, mid);
+      gl.readPixels((w / 2) | 0, (h * 0.75) | 0, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, sky); // GL y-up: 0.75h = upper quarter = sky
+      glDiag.pixel = { f: glDiag.frames, rgba: Array.from(mid), sky: Array.from(sky) };
+      if (IS_IOS_WEBKIT) iosPaintWatchdog(mid, sky);
     } catch (e) {
       glDiag.pixel = { f: glDiag.frames, err: String(e) };
     }
@@ -5259,43 +5264,61 @@ setTimeout(() => {
 // re-verified the next second, and the winning layer is recorded in the
 // notes so the permanent fix can target the right stage. iOS only; probes
 // stop after the first healthy read or ~8 attempts (≈1ms readback each).
-function canvasPaintsBlack() {
-  try {
-    if (composerBypassed) renderer.render(scene, camera);
-    else composer.render();
-    const gl = renderer.getContext();
-    const w = gl.drawingBufferWidth, h = gl.drawingBufferHeight;
-    const mid = new Uint8Array(4), sky = new Uint8Array(4);
-    gl.readPixels((w / 2) | 0, (h / 2) | 0, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, mid);
-    gl.readPixels((w / 2) | 0, (h * 0.75) | 0, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, sky); // GL y-up: 0.75h = upper quarter = sky
-    glDiag.pixel = { f: glDiag.frames, rgba: Array.from(mid), sky: Array.from(sky) };
-    return mid[0] + mid[1] + mid[2] === 0 && sky[0] + sky[1] + sky[2] === 0;
-  } catch (e) {
-    glDiagNote(`paint probe failed: ${e && e.message ? e.message : e}`);
-    return false; // can't verify — never escalate blindly
+// PERSISTENT iOS paint watchdog — piggybacks on the render loop (see the
+// sampling block at the end of frameInner), no extra renders of its own.
+// A one-shot boot probe proved insufficient on the iPhone 16 Pro: the world
+// renders FINE through the first half of the intro (the boot check passes),
+// then the output dies to black mid-intro (a ~1s black blink = the
+// corruption event, most plausibly an iOS memory-pressure purge or a
+// Metal-ANGLE half-float-MSAA resolve going bad), stays black through
+// menu/how-to/race start, and self-heals ~10s into racing — exactly when
+// Safari's URL bar collapse fires a real resize, which reallocates every
+// GPU buffer. So the watchdog runs FOREVER (2 consecutive all-black samples
+// ≈2s apart trigger one repair step) and the ladder starts with exactly
+// that proven remedy:
+//   1. realloc kick — renderer.setSize() re-creates the drawing buffer and
+//      the composer targets are rebuilt fresh, KEEPING full visual quality
+//      (this is the same repair the accidental resize performs);
+//   2. safe composer — drop the fragile half-float MSAA target;
+//   3. composer bypass — direct render, the path the (working) logo canvas
+//      uses. Every step is logged for the ?dev overlay.
+let iosBlackStreak = 0;
+let iosRepairStep = 0;
+function iosPaintWatchdog(mid, sky) {
+  if (!glDiag.boot.preloaderHidden) return; // world isn't supposed to be visible yet
+  const allBlack = mid[0] + mid[1] + mid[2] === 0 && sky[0] + sky[1] + sky[2] === 0;
+  if (!allBlack) {
+    if (iosBlackStreak > 0) glDiagNote(`iOS paint recovered (step ${iosRepairStep})`);
+    iosBlackStreak = 0;
+    return;
   }
-}
-if (IS_IOS_WEBKIT) {
-  let paintChecks = 0;
-  const paintProbe = setInterval(() => {
-    if (!glDiag.boot.preloaderHidden) return; // world isn't supposed to be visible yet
-    paintChecks++;
-    if (!canvasPaintsBlack()) {
-      glDiagNote(`iOS paint OK (check ${paintChecks}, safe=${composerSafeMode}, bypass=${composerBypassed})`);
-      clearInterval(paintProbe);
-      return;
-    }
-    if (!composerSafeMode) {
-      rebuildComposerSafe('iOS: canvas paints pure black on the half-float MSAA composer');
-    } else if (!composerBypassed) {
-      composerBypassed = true;
-      glDiagNote('iOS: still black on safe composer — bypassing composer (direct render)');
-    } else {
-      glDiagNote('iOS: still black even with direct render');
-      clearInterval(paintProbe);
-    }
-    if (paintChecks >= 8) clearInterval(paintProbe);
-  }, 1000);
+  iosBlackStreak++;
+  if (iosBlackStreak < 2) return; // one black sample can be coincidence; two ≈2s apart cannot
+  iosBlackStreak = 0;
+  iosRepairStep++;
+  if (iosRepairStep === 1) {
+    // full-quality repair: force-recreate the drawing buffer + composer
+    // targets, exactly like the URL-bar resize that heals it by accident.
+    // NB: render-target setSize() SKIPS reallocation when dimensions are
+    // unchanged, so bounce through h±1 to force a genuine realloc of the
+    // whole composer/bloom chain (no render happens in between — the
+    // one-frame wrong size is never visible). renderer.setSize always
+    // resets the drawing buffer (canvas.width assignment), no bounce needed.
+    glDiagNote('iOS watchdog: black output — realloc kick (setSize bounce)');
+    const w = window.innerWidth, h = window.innerHeight;
+    renderer.setSize(w, h);
+    composer.setSize(w, h + 1);
+    bloomPass.setSize(w * BLOOM_RES_SCALE, (h + 1) * BLOOM_RES_SCALE);
+    composer.setSize(w, h);
+    bloomPass.setSize(w * BLOOM_RES_SCALE, h * BLOOM_RES_SCALE);
+  } else if (iosRepairStep === 2) {
+    rebuildComposerSafe('iOS watchdog: still black after realloc kick');
+  } else if (iosRepairStep === 3) {
+    composerBypassed = true;
+    glDiagNote('iOS watchdog: still black on safe composer — bypassing composer (direct render)');
+  } else if (iosRepairStep === 4) {
+    glDiagNote('iOS watchdog: still black even with direct render');
+  } // >4: keep sampling silently; recovery is still logged if it happens
 }
 // Fallback: if rAF stalls (embedded/backgrounded preview panels), keep the game
 // stepping via a timer so it never freezes mid-countdown or mid-race.
