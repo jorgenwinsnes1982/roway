@@ -1456,6 +1456,8 @@ const hud = {
   challengeLinkScreen: $('challengeLinkScreen'), challengeLinkClose: $('challengeLinkClose'),
   challengeLinkInput: $('challengeLinkInput'), challengeLinkCopyBtn: $('challengeLinkCopyBtn'),
   challengeLinkDesc: $('challengeLinkDesc'),
+  challengeLinkBtnIcon: $('challengeLinkBtnIcon'), challengeLinkBtnLabel: $('challengeLinkBtnLabel'),
+  snackbar: $('snackbar'),
   duelCard: $('duelCard'), duelResult: $('duelResult'),
   challengeScreen: $('challengeScreen'), challengeTitle: $('challengeTitle'), challengeTimeText: $('challengeTimeText'),
   challengeGoBtn: $('challengeGoBtn'), challengeNoBtn: $('challengeNoBtn'),
@@ -3140,8 +3142,19 @@ async function saveScore({ silent = false } = {}) {
       // result screen shows TODAY's board — that's the course you just rowed
       const board = Array.isArray(dayScores) ? dayScores : allScores;
       const rank = Array.isArray(dayScores) ? rankDay : rankAll;
-      const inBoard = board.some((e) => e.id === serverId);
-      paintBoard(board, serverId, DAILY_KEY, (!inBoard && serverEntry) ? { rank, entry: serverEntry } : null);
+      // ALWAYS hand paintBoard a selfRow when we have authoritative server
+      // data, instead of gating it on our own `inBoard` membership check
+      // against `board` (which can hold up to 20 entries). Bug this fixes:
+      // an `inBoard === true` while the player's entry sits outside the
+      // rendered top-3 slice used to silently drop them — inBoard said
+      // "no need for a fallback row" while the actual top3 render had
+      // nothing to show for them, so the "TOP 3 TODAY" list showed just
+      // the other 1-2 real entries. paintBoard's own playerInTop3 check
+      // (against the REAL top3 slice, not the up-to-20-entry board) is
+      // the reliable source of truth for whether a fallback row is
+      // needed — let it decide instead of us pre-filtering.
+      const selfRow = serverEntry ? { rank, entry: serverEntry } : null;
+      paintBoard(board, serverId, DAILY_KEY, selfRow);
       // the card's RANK stat was set right at finish time from a possibly-
       // stale cache (see finishRace()) — now that the save round-trip gives
       // an authoritative rank, overwrite it so the two never contradict.
@@ -3223,27 +3236,66 @@ async function shareChallenge(msgEl, btnEl) {
 // stale (the awaited fetch above sits in between) — some browsers, notably
 // Safari/iOS, silently refuse the call once that gesture has gone stale,
 // which read as "the link doesn't work" even though it was created fine.
-// The modal's own Copy button below fires its own fresh click, so it isn't
-// affected the same way.
+// The modal's own Share/Copy button below fires its own fresh click, so
+// it isn't affected the same way.
+
+// Minimal inline icons (Feather-style, currentColor) — no asset file needed
+// for two small monochrome glyphs swapped based on share capability.
+const SHARE_ICON_SVG = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/><polyline points="16 6 12 2 8 6"/><line x1="12" y1="2" x2="12" y2="15"/></svg>';
+const COPY_ICON_SVG = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>';
+// Feature-detected once — devices with the Web Share API (virtually all
+// modern mobile browsers; few desktop ones) get the native OS share sheet
+// (Messages/SMS/copy/AirDrop/whatever the OS offers); everyone else falls
+// back to copy-to-clipboard + a snackbar toast.
+const CAN_SHARE = typeof navigator.share === 'function';
+
+let snackbarT = null;
+// Modal-styled toast for confirmations that don't warrant a full modal (see
+// #snackbar in index.html — same gold-framed dark plate as every .confirmBox).
+function showSnackbar(msg, ms = 2400) {
+  if (!hud.snackbar) return;
+  hud.snackbar.textContent = msg;
+  hud.snackbar.classList.add('show');
+  clearTimeout(snackbarT);
+  snackbarT = setTimeout(() => hud.snackbar.classList.remove('show'), ms);
+}
+
 function openChallengeLinkModal(url) {
   hud.challengeLinkDesc.textContent = shareCopyText();
   hud.challengeLinkInput.value = url;
-  hud.challengeLinkCopyBtn.textContent = 'Copy';
+  hud.challengeLinkBtnIcon.innerHTML = CAN_SHARE ? SHARE_ICON_SVG : COPY_ICON_SVG;
+  hud.challengeLinkBtnLabel.textContent = CAN_SHARE ? 'Share' : 'Copy';
   hud.challengeLinkScreen.classList.remove('hidden');
 }
 function closeChallengeLinkModal() {
   hud.challengeLinkScreen.classList.add('hidden');
 }
 hud.challengeLinkClose.addEventListener('click', (e) => { e.currentTarget.blur(); closeChallengeLinkModal(); });
-hud.challengeLinkCopyBtn.addEventListener('click', async (e) => {
-  e.currentTarget.blur();
+async function copyLinkFallback(url) {
   try {
-    await navigator.clipboard.writeText(hud.challengeLinkInput.value);
-    hud.challengeLinkCopyBtn.textContent = 'Copied!';
+    await navigator.clipboard.writeText(url);
+    showSnackbar('Copied to clipboard!');
   } catch {
     // clipboard permission denied/unavailable — the link is still right
     // there, selected, ready for a manual copy
     hud.challengeLinkInput.select();
+  }
+}
+hud.challengeLinkCopyBtn.addEventListener('click', async (e) => {
+  e.currentTarget.blur();
+  const url = hud.challengeLinkInput.value;
+  if (!CAN_SHARE) return copyLinkFallback(url);
+  try {
+    // title/text set the OS compose screen's pre-filled subject/body
+    // alongside the link — the recipient-facing challenge invite, not the
+    // sender-facing preview shown in #challengeLinkDesc above (that one's
+    // first-person "I completed…"; this is "a friend challenges you…").
+    await navigator.share({ title: 'ROWAY', text: challengeShareText(), url });
+    // the OS share sheet IS the confirmation UI (Messages compose, share
+    // extension, etc.) — no snackbar needed on a successful share
+  } catch (err) {
+    if (err && err.name === 'AbortError') return; // user backed out — not a failure, say nothing
+    await copyLinkFallback(url); // share genuinely failed/blocked — same fallback as a share-incapable device
   }
 });
 // share body text: branches on game mode + completion state, but every
@@ -3258,6 +3310,20 @@ function shareCopyText() {
     return 'Mission complete. I claimed the World Cup trophy in the USA and rowed it home to Ullevaal.';
   }
   return `I brought the World Cup trophy home in ROWAY. Can you beat my time? (${fmtTime(G.lastRun.time)})`;
+}
+// recipient-facing text for the actual share (OS share sheet's pre-filled
+// message, or the clipboard-copied context if the game later wants to show
+// it) — distinct from shareCopyText() above, which is the SENDER's own
+// first-person preview shown in the modal. This reframes the same context
+// as an invitation, per request ("A friend challenges you on ROWAY!").
+function challengeShareText() {
+  if (G.gameMode === 'kapp') {
+    return `A friend challenges you on ROWAY! Beat their time of ${fmtTime(G.lastRun.time)} if you can.`;
+  }
+  if (G.gameMode === 'voyage' && G.stageAtRunStart === FINAL_STAGE_ID && isStageFinal(FINAL_STAGE_ID)) {
+    return 'A friend challenges you on ROWAY! They brought the World Cup trophy home — can you do it too?';
+  }
+  return `A friend challenges you on ROWAY! Can you beat their time? (${fmtTime(G.lastRun.time)})`;
 }
 // Result redesign: the duel outcome no longer has its own rematch button —
 // "Challenge a friend" (below) creates/shares the same link for both cases.
@@ -3986,7 +4052,10 @@ function finishRace() {
     // actual rank number lives in the card's RANK stat instead of the old
     // giant "1ST TODAY" hero text, so it isn't shown twice. KAPPRO has no
     // stage concept, so #stageNameBanner (voyage-only) stays hidden here.
-    hud.placeBanner.textContent = 'RACE COMPLETED';
+    // explicit <br> (trusted static string, no user data) — always 2 lines
+    // regardless of viewport width, instead of the browser's natural wrap
+    // point sometimes landing it on one long line on wider phones
+    hud.placeBanner.innerHTML = 'RACE<br>COMPLETED';
     hud.stageNameBanner.classList.add('hiddenMsg');
     // cached estimate; saveScore() below overwrites this with the
     // authoritative server rank once that round-trip completes.

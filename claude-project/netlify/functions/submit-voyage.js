@@ -18,6 +18,7 @@
 // conventions, including reusing the SAME `nonces` and `rate` stores.
 import { getStore } from '@netlify/blobs';
 import { createHmac, randomUUID } from 'node:crypto';
+import { casUpdate, rateLimitAllow } from './lib/blobcas.js';
 
 const SECRET = process.env.SCORE_SECRET || 'dev-insecure-secret-change-me';
 const NONCE_TTL_MS = 10 * 60 * 1000;   // same TTL as submit-score
@@ -38,13 +39,11 @@ export default async (req, context) => {
   const rate = getStore('rate');           // shared with KAPPRO, per spec
   const now = Date.now();
 
-  // --- rate limit per IP ---
+  // --- rate limit per IP (atomic counter — see lib/blobcas.js) ---
   const ip = context?.ip || req.headers.get('x-nf-client-connection-ip') || 'unknown';
-  const rl = (await rate.get(`rate:${ip}`, { type: 'json' })) || { count: 0, start: now };
-  if (now - rl.start > RATE_WINDOW_MS) { rl.count = 0; rl.start = now; }
-  rl.count++;
-  await rate.setJSON(`rate:${ip}`, rl);
-  if (rl.count > RATE_MAX) return json(429, { error: 'rate-limit' });
+  if (!(await rateLimitAllow(rate, `rate:${ip}`, now, RATE_WINDOW_MS, RATE_MAX))) {
+    return json(429, { error: 'rate-limit' });
+  }
 
   // --- top-level shape ---
   const voyageId = String(data.voyageId ?? '');
@@ -63,8 +62,8 @@ export default async (req, context) => {
   // BEFORE any nonce is consumed so a rejected attempt doesn't burn tokens.
   const FINAL_STAGE = STAGE_COUNT - 1;
   const playerKey = `player:${voyageId}`;
-  const player = (await board.get(playerKey, { type: 'json' })) || { id: randomUUID(), stages: {} };
-  if (stagesInReq.includes(FINAL_STAGE) && player.stages[FINAL_STAGE] !== undefined) {
+  const existing = (await board.get(playerKey, { type: 'json' })) || { stages: {} };
+  if (stagesInReq.includes(FINAL_STAGE) && existing.stages[FINAL_STAGE] !== undefined) {
     return json(409, { error: 'stage-final' });
   }
 
@@ -89,39 +88,58 @@ export default async (req, context) => {
     nonceRecords.push({ nonce, rec: nrec, stage, timeMs });
   }
 
-  // everything validated — consume the nonces (single use each)
-  for (const { nonce, rec } of nonceRecords) {
-    rec.used = true;
-    await nonces.setJSON(nonce, rec);
+  // everything validated — consume the nonces (single use each). The etag
+  // conditional write makes each claim atomic: a concurrent replay of the
+  // same captured token loses the race and gets nonce-used.
+  for (const { nonce } of nonceRecords) {
+    const cur = await nonces.getWithMetadata(nonce, { type: 'json' });
+    if (!cur || cur.data.used) return json(403, { error: 'nonce-used' });
+    const res = await nonces.setJSON(nonce, { ...cur.data, used: true }, { onlyIfMatch: cur.etag });
+    if (res && res.modified === false) return json(403, { error: 'nonce-used' });
   }
 
-  // --- upsert this player's per-stage record (loaded above for the stage-5 lock) ---
-  for (const { stage, timeMs } of nonceRecords) {
-    // defensive min() — a token is only ever issued for an improvement
-    // client-side, but never trust the client to have actually done that.
-    // (For FINAL_STAGE prev is always undefined here — the 409 above.)
-    const prev = player.stages[stage];
-    player.stages[stage] = prev === undefined ? timeMs : Math.min(prev, timeMs);
-  }
-  const alias = String(data.alias ?? '').trim().slice(0, 14).replace(/[<>&"']/g, '') || 'Unknown viking';
-  player.alias = alias;
-  player.ts = now;
-  await board.setJSON(playerKey, player);
+  // --- upsert this player's per-stage record via CAS (two devices sharing a
+  // voyageId used to be able to erase each other's stage times — last writer
+  // won the whole record). The mutate re-merges against FRESH data on every
+  // retry, and re-asserts the stage-5 one-shot rule under the race.
+  // 16-char cap matches the client-side name rule (was 14 — silent mismatch).
+  const alias = String(data.alias ?? '').trim().slice(0, 16).replace(/[<>&"']/g, '') || 'Unknown viking';
+  let player;
+  const landedPlayer = await casUpdate(board, playerKey, (cur) => {
+    player = cur || { id: randomUUID(), stages: {} };
+    for (const { stage, timeMs } of nonceRecords) {
+      const prev = player.stages[stage];
+      // FINAL_STAGE is one-shot: first accepted time is final (the pre-check
+      // above 409s the obvious case; this holds it under concurrency too).
+      if (stage === FINAL_STAGE && prev !== undefined) continue;
+      // defensive min() — a token is only ever issued for an improvement
+      // client-side, but never trust the client to have actually done that.
+      player.stages[stage] = prev === undefined ? timeMs : Math.min(prev, timeMs);
+    }
+    player.alias = alias;
+    player.ts = now;
+    return player;
+  });
+  if (!landedPlayer) return json(503, { error: 'busy' });
 
   // --- per-stage public boards: [{ id, alias, timeMs }] sorted ascending,
   // capped at 100 per stage — powers the client's "Nth on this stage" and
   // partial "Nth place so far" readouts (a complete-voyage total isn't
   // needed for those, so they work from stage 1 onward).
-  const stageBoards = (await board.get('stageBoards', { type: 'json' })) || {};
-  for (const stg of Object.keys(player.stages)) {
-    const arr = stageBoards[stg] || [];
-    const entry = { id: player.id, alias, timeMs: player.stages[stg] };
-    const i = arr.findIndex((e) => e.id === player.id);
-    if (i >= 0) arr[i] = entry; else arr.push(entry); // also refreshes alias on every stage
-    arr.sort((a, b) => a.timeMs - b.timeMs);
-    stageBoards[stg] = arr.slice(0, 100);
-  }
-  await board.setJSON('stageBoards', stageBoards);
+  let stageBoards = {};
+  const landedStages = await casUpdate(board, 'stageBoards', (cur) => {
+    stageBoards = cur || {};
+    for (const stg of Object.keys(player.stages)) {
+      const arr = stageBoards[stg] || [];
+      const entry = { id: player.id, alias, timeMs: player.stages[stg] };
+      const i = arr.findIndex((e) => e.id === player.id);
+      if (i >= 0) arr[i] = entry; else arr.push(entry); // also refreshes alias on every stage
+      arr.sort((a, b) => a.timeMs - b.timeMs);
+      stageBoards[stg] = arr.slice(0, 100);
+    }
+    return stageBoards;
+  });
+  if (!landedStages) return json(503, { error: 'busy' });
 
   // --- total only exists once all 5 stages are known ---
   const stageKeys = Object.keys(player.stages);
@@ -134,17 +152,20 @@ export default async (req, context) => {
     // kept as an explicit assertion per spec rather than trusting the sum
     if (totalMs < STAGE_COUNT * MIN_STAGE_MS) return json(400, { error: 'implausible-total' });
 
-    const publicList = (await board.get('list', { type: 'json' })) || [];
-    const idx = publicList.findIndex((e) => e.id === player.id);
-    const entry = { id: player.id, alias, totalMs: +totalMs.toFixed(0), ts: now };
-    if (idx >= 0) publicList[idx] = entry; else publicList.push(entry);
-    publicList.sort((a, b) => a.totalMs - b.totalMs); // ascending — lowest total wins
-    // rank against the FULL sorted list, before trimming for storage — stays
-    // exact past rank 100 instead of collapsing to "not found"
-    rank = publicList.findIndex((e) => e.id === player.id) + 1;
-    const trimmed = publicList.slice(0, 100);
-    await board.setJSON('list', trimmed);
-    list = trimmed; // full stored board — client shows a scrollable list
+    const landedList = await casUpdate(board, 'list', (cur) => {
+      const publicList = Array.isArray(cur) ? cur : [];
+      const idx = publicList.findIndex((e) => e.id === player.id);
+      const entry = { id: player.id, alias, totalMs: +totalMs.toFixed(0), ts: now };
+      if (idx >= 0) publicList[idx] = entry; else publicList.push(entry);
+      publicList.sort((a, b) => a.totalMs - b.totalMs); // ascending — lowest total wins
+      // rank against the FULL sorted list, before trimming for storage — stays
+      // exact past rank 100 instead of collapsing to "not found"
+      rank = publicList.findIndex((e) => e.id === player.id) + 1;
+      const trimmed = publicList.slice(0, 100);
+      list = trimmed; // full stored board — client shows a scrollable list
+      return trimmed;
+    });
+    if (!landedList) { rank = null; list = []; } // player record landed — degrade gracefully
   }
 
   return json(200, { ok: true, complete, totalMs, stages: player.stages, id: player.id, alias, rank, list, stageBoards });

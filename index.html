@@ -432,6 +432,28 @@
     .settingResetBtn:active { transform: scale(.96); }
     /* armed = waiting for the confirming second tap (see main.js) — reads as a warning */
     .settingResetBtn.armed { background: #b33636; border-color: #e2685f; }
+    /* Share/Copy button (challenge-link modal) — icon + label, same base
+       pill as .settingResetBtn */
+    .shareActionBtn { display: inline-flex; align-items: center; gap: 7px; }
+    .shareActionIcon svg { display: block; width: 15px; height: 15px; }
+    /* Snackbar toast: identical gold-framed dark plate to every modal's
+       .confirmBox, fixed near the bottom, slides up + fades in on .show.
+       z-index above modals (.screen is 50/z-index scale tops out there) so
+       it reads on top of the challenge-link modal it's usually triggered
+       from. */
+    #snackbar {
+      position: fixed; left: 50%; bottom: 36px; z-index: 90;
+      transform: translate(-50%, 14px); opacity: 0; pointer-events: none;
+      background: linear-gradient(180deg, #17140f, #0a0908);
+      border: 1px solid #b98a3e; border-radius: 10px;
+      box-shadow: 0 0 0 3px rgba(8, 7, 6, .85), 0 0 0 4px rgba(185, 138, 62, .5),
+                  inset 0 0 16px rgba(0, 0, 0, .6);
+      padding: 12px 24px; color: #fff; font-family: "Cinzel", serif;
+      font-size: 13.5px; font-weight: 700; letter-spacing: .3px;
+      max-width: min(340px, 88vw); text-align: center;
+      transition: opacity .25s ease, transform .25s ease;
+    }
+    #snackbar.show { opacity: 1; transform: translate(-50%, 0); }
     /* Settings modal panel: same gold-framed dark plate + top diamond finial
        as the leaderboard board (Figma frame 179:1231 language). Scoped to
        #settingsScreen — #confirmScreen gets its own identical block below
@@ -2131,6 +2153,14 @@
       transition: filter .18s var(--btn-ease-out);
       transition-delay: 0s;
     }
+    /* Result screen primary CTAs (Row again / Challenge a friend) — sized up
+       ~10% over the site's standard raster-btn baseline so they read as the
+       primary actions on this screen. Cap width scales with height (not
+       just --btn-h alone): the end-cap art is background-size:100% 100%,
+       so bumping only the height would visibly stretch the gold caps. */
+    #resultScreen .menuBtns .raster-btn {
+      --btn-h: 68px; --btn-cap-l: 87px; --btn-cap-r: 84px; --btn-pad-x: 51px;
+    }
     .raster-btn:hover .raster-btn__piece,
     .raster-btn:focus-within .raster-btn__piece { filter: saturate(1.08); }
     .raster-btn__piece--left,
@@ -2224,6 +2254,13 @@
         --btn-pad-x: 34px;
         --btn-overlap: 4px;
       }
+      /* same ~10%-over-baseline bump as the desktop rule above, scaled to
+         the mobile baseline instead — without this the unscoped desktop
+         values would apply here too (higher specificity beats media-query
+         nesting) and come out ~26% bigger than mobile-baseline, not 10% */
+      #resultScreen .menuBtns .raster-btn {
+        --btn-h: 59px; --btn-cap-l: 76px; --btn-cap-r: 73px; --btn-pad-x: 37px;
+      }
       .raster-btn--compact {
         --btn-h: 44px;
         --btn-cap-l: 56px;
@@ -2263,6 +2300,18 @@
          pull both neighbours in. ~62px → ~36px with the pill showing. */
       #resultTicker { padding: 4px 16px; font-size: 13px; margin: -6px 0; }
       #lbNameHeadline { margin-top: 0; }
+    }
+    /* Result screen only, taller phones only: the 664px-fit rules above were
+       tuned for a bars-visible iPhone 12 — on anything with real headroom
+       (iPhone 13 and up, 760px+) that tight rhythm just reads as cramped for
+       no reason. ID selector (#resultScreen) beats the shared .screen class
+       regardless of query order, so this only affects the result screen —
+       every other mobile screen keeps the tight rules above untouched. */
+    @media (max-width: 640px) and (min-height: 760px) {
+      #resultScreen { gap: 16px; }
+      #resultTicker { margin: 10px 0; }
+      #resultScreen .menuBtns { margin-top: 4px; }
+      .lbWrap { margin-top: 6px; }
     }
   </style>
 </head>
@@ -2556,13 +2605,18 @@
       </div>
     </div>
 
-    <!-- Outgoing challenge link: shown once create-challenge succeeds. A
-         plain modal with the link + an explicit Copy button, rather than
-         relying solely on navigator.share()/clipboard.writeText() — both are
-         gesture-gated APIs, and by the time they'd fire here the triggering
-         click is already stale (an awaited fetch to create-challenge sits in
-         between), which some browsers (notably Safari/iOS) silently refuse.
-         The Copy button below fires its own fresh click, so it isn't affected. -->
+    <!-- Outgoing challenge link: shown once create-challenge succeeds. The
+         action button is capability-gated (see wireChallengeLinkButton() in
+         main.js): devices with the Web Share API get a Share button that
+         opens the native OS share sheet directly (Messages/SMS/copy/etc —
+         letting the OS handle "or copy or whatever" itself); everyone else
+         (most desktop browsers) gets Copy + a snackbar toast. Both paths
+         fire from THIS button's own fresh click — never from the stale
+         gesture left over after create-challenge's awaited fetch, which is
+         why this modal exists as a separate step in the first place (some
+         browsers, notably Safari/iOS, silently refuse a share/clipboard
+         call once the gesture that triggered the awaited call has gone
+         stale). -->
     <div class="screen hidden" id="challengeLinkScreen">
       <div class="confirmBox" style="position:relative">
         <button class="modalClose" id="challengeLinkClose" aria-label="Close">✕</button>
@@ -2571,10 +2625,19 @@
         <div class="settingRow" style="gap:10px">
           <input type="text" id="challengeLinkInput" readonly aria-label="Challenge link"
                  style="flex:1; min-width:0; background:rgba(255,255,255,.08); border:1px solid rgba(255,255,255,.25); border-radius:8px; padding:10px 12px; color:#fff; font-size:13px; font-family:inherit;">
-          <button class="settingResetBtn" id="challengeLinkCopyBtn">Copy</button>
+          <button class="settingResetBtn shareActionBtn" id="challengeLinkCopyBtn">
+            <span class="shareActionIcon" id="challengeLinkBtnIcon" aria-hidden="true"></span>
+            <span id="challengeLinkBtnLabel">Copy</span>
+          </button>
         </div>
       </div>
     </div>
+
+    <!-- Snackbar toast — same gold-framed dark-plate language as every other
+         modal (see .confirmBox), for confirmations that don't warrant a full
+         modal (e.g. "Copied to clipboard!"). Single reusable element, shown/
+         hidden via showSnackbar() in main.js. -->
+    <div id="snackbar" role="status" aria-live="polite"></div>
 
     <!-- How-to modal (shown after START, before the race) -->
     <!-- Two presentations of the same screen: the pre-race flow (icy wordmark,
