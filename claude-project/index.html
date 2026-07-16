@@ -544,16 +544,16 @@
     .aboutBody p { margin: 0 0 14px; }
     .aboutBody p:last-child { margin-bottom: 0; }
     /* Modal scroll-fade: when a scrollable modal body has more content
-       below the fold, the last visible line fades into the box's bottom
-       edge instead of being hard-clipped mid-sentence. initScrollFade()
-       (main.js) toggles .atBottom off/on via a scroll listener so the
-       fade only shows while there's genuinely more to scroll to — it
-       never eats the real final line once you've reached the bottom. */
+       above or below the fold, that edge's last visible line fades into
+       the box's border instead of being hard-clipped mid-sentence. The
+       actual mask (which end(s) fade, if any) is fully scroll-position-
+       driven — initScrollFade() in main.js sets it inline on every
+       scroll, since a single CSS class can't express "top only" / "bottom
+       only" / "both" / "neither" without four separate rules. This class
+       is just the marker JS looks for; -webkit-mask-image here is a
+       neutral pre-JS default (no fade) so there's no flash before the
+       first update() runs. */
     .scrollFade {
-      -webkit-mask-image: linear-gradient(to bottom, #000 calc(100% - 28px), transparent 100%);
-              mask-image: linear-gradient(to bottom, #000 calc(100% - 28px), transparent 100%);
-    }
-    .scrollFade.atBottom {
       -webkit-mask-image: none;
               mask-image: none;
     }

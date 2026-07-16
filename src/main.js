@@ -2684,10 +2684,22 @@ function escapeHtml(s) {
 // needing to scroll at all, e.g. a short leaderboard) shows the real final
 // line untouched. Returns the update fn so the caller can re-trigger it
 // after changing the element's content (paintBoard, etc.).
+const SCROLL_FADE_PX = 28;
 function initScrollFade(el) {
   if (!el) return () => {};
   const update = () => {
-    el.classList.toggle('atBottom', el.scrollTop + el.clientHeight >= el.scrollHeight - 2);
+    const atTop = el.scrollTop <= 2;
+    const atBottom = el.scrollTop + el.clientHeight >= el.scrollHeight - 2;
+    if (atTop && atBottom) {
+      // nothing to scroll to either direction — no mask at all, never
+      // fade real content away for no reason (e.g. a 1-row leaderboard)
+      el.style.maskImage = el.style.webkitMaskImage = 'none';
+      return;
+    }
+    const top = atTop ? '#000 0' : `transparent 0, #000 ${SCROLL_FADE_PX}px`;
+    const bottom = atBottom ? '#000 100%' : `#000 calc(100% - ${SCROLL_FADE_PX}px), transparent 100%`;
+    const grad = `linear-gradient(to bottom, ${top}, ${bottom})`;
+    el.style.maskImage = el.style.webkitMaskImage = grad;
   };
   el.addEventListener('scroll', update, { passive: true });
   update();
