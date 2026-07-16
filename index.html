@@ -1197,18 +1197,30 @@
        verbatim) replaces the old wall of separate lines (score, breakdown,
        voyage progress, gate-penalty bar). Placement (#placeBanner) stays the
        hero headline above the card; everything numeric lives inside it. */
-    /* one refined gold border + a soft drop shadow — the old triple outline
-       (dark ring + second gold ring) and the diamond corner ornaments read
-       as competing frames rather than one premium card */
+    /* same frame language as the TOP 3 list (#resultScreen .lbList): navy
+       gradient, gold border + double ring, and the centred diamond finial —
+       the two boxes on this screen read as one matched set */
     #resultCard {
       position: relative;
       width: min(380px, 88vw);
       margin: 6px auto 0;
-      background: linear-gradient(180deg, #17140f, #0a0908);
-      border: 1px solid rgba(185, 138, 62, .8);
+      background: linear-gradient(180deg, #111c31, #0b1424);
+      border: 1px solid #b98a3e;
       border-radius: 10px;
-      box-shadow: 0 12px 32px rgba(0, 0, 0, .45), inset 0 0 22px rgba(0, 0, 0, .55);
+      box-shadow: 0 0 0 3px rgba(10, 18, 34, .85), 0 0 0 4px rgba(185, 138, 62, .5),
+                  inset 0 0 26px rgba(0, 0, 0, .5);
       padding: 24px 24px 18px;
+    }
+    #resultCard::before {
+      content: ''; position: absolute; z-index: 2; left: 50%; top: 0;
+      width: 15px; height: 15px; transform: translate(-50%, -50%) rotate(45deg);
+      background: #0e1830; border: 2px solid #c9973f;
+      box-shadow: 0 0 8px rgba(0, 0, 0, .6);
+    }
+    #resultCard::after {
+      content: ''; position: absolute; z-index: 3; left: 50%; top: 0;
+      width: 5px; height: 5px; transform: translate(-50%, -50%) rotate(45deg);
+      background: #c9973f;
     }
     /* the big number + its "Pts" unit, baseline-aligned like a suffix */
     #resCardScoreRow { display: flex; align-items: baseline; justify-content: center; gap: 8px; }
