@@ -15,16 +15,14 @@ function isCompact(btn) {
   return (
     btn.classList.contains('ctaGhost') ||
     btn.classList.contains('linkBtn') ||
-    btn.classList.contains('lbTab')
+    btn.classList.contains('lbTab') ||
+    btn.id === 'saveScoreBtn'
   );
 }
 
-// #saveScoreBtn deliberately NOT enhanced: the result screen's Claim CTA is a
-// clean flat button (see #saveScoreBtn CSS) — the raster caps read as too
-// heavy next to the simplified name input above it.
 export function enhanceRuneButtons(root = document) {
   const buttons = root.querySelectorAll(
-    'button.cta, button.ctaSecondary, button.ctaGhost, button.linkBtn, button.lbTab'
+    'button.cta, button.ctaSecondary, button.ctaGhost, button.linkBtn, button.lbTab, #saveScoreBtn'
   );
   buttons.forEach((btn) => {
     if (btn.parentNode && btn.parentNode.classList && btn.parentNode.classList.contains('raster-btn')) return; // already wrapped
