@@ -64,9 +64,9 @@ export const VOYAGE_STAGES = [
 // stage 5 cleared. Kept as named constants (not just VOYAGE_STAGES[3].untilM
 // inline) because voyagemap.js's route-drawing math and MILESTONES both key
 // off these directly.
-export const VOYAGE_OUT_M = VOYAGE_STAGES[3].untilM;               // 6600 — Norway → USA
-export const VOYAGE_HOME_M = VOYAGE_STAGES[4].length;              // 1900 — homeward with the trophy
-export const TOTAL_VOYAGE_M = VOYAGE_OUT_M + VOYAGE_HOME_M;        // 8500 — the whole round trip
+export const VOYAGE_OUT_M = VOYAGE_STAGES[3].untilM;               // 7200 — Norway → USA
+export const VOYAGE_HOME_M = VOYAGE_STAGES[4].length;              // 4200 — homeward with the trophy
+export const TOTAL_VOYAGE_M = VOYAGE_OUT_M + VOYAGE_HOME_M;        // 11400 — the whole round trip
 
 export function currentStage(totalM) {
   return VOYAGE_STAGES.find((s) => totalM < s.untilM) || VOYAGE_STAGES[VOYAGE_STAGES.length - 1];

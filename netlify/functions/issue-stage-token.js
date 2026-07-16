@@ -12,6 +12,7 @@
 // Netlify v2 function (ESM default export) — required so Blobs is auto-injected.
 import { getStore } from '@netlify/blobs';
 import { createHmac, randomUUID } from 'node:crypto';
+import { rateLimitAllow } from './lib/blobcas.js';
 
 const SECRET = process.env.SCORE_SECRET || 'dev-insecure-secret-change-me';
 const RATE_MAX = 5;                    // submissions per IP...
@@ -35,13 +36,11 @@ export default async (req, context) => {
   const nonces = getStore('nonces'); // shared with KAPPRO's nonce store, per spec
   const now = Date.now();
 
-  // --- rate limit per IP (same pattern as submit-score) ---
+  // --- rate limit per IP (atomic counter — see lib/blobcas.js) ---
   const ip = context?.ip || req.headers.get('x-nf-client-connection-ip') || 'unknown';
-  const rl = (await rate.get(`rate:${ip}`, { type: 'json' })) || { count: 0, start: now };
-  if (now - rl.start > RATE_WINDOW_MS) { rl.count = 0; rl.start = now; }
-  rl.count++;
-  await rate.setJSON(`rate:${ip}`, rl);
-  if (rl.count > RATE_MAX) return json(429, { error: 'rate-limit' });
+  if (!(await rateLimitAllow(rate, `rate:${ip}`, now, RATE_WINDOW_MS, RATE_MAX))) {
+    return json(429, { error: 'rate-limit' });
+  }
 
   // --- validate input ---
   const voyageId = String(data.voyageId ?? '');

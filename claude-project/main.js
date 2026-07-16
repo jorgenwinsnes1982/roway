@@ -919,7 +919,13 @@ function spawnLetterForRace() {
   LETTER.z = spot.z;
   LETTER.taken = false;
   if (!LETTER.mesh || LETTER.mesh.userData.char !== char) {
-    if (LETTER.mesh) scene.remove(LETTER.mesh);
+    if (LETTER.mesh) {
+      scene.remove(LETTER.mesh);
+      // each sprite owns a canvas texture + material — free the GPU copies,
+      // don't just orphan them (QA B13)
+      if (LETTER.mesh.material.map) LETTER.mesh.material.map.dispose();
+      LETTER.mesh.material.dispose();
+    }
     LETTER.mesh = buildLetterSprite(char);
     LETTER.mesh.userData.char = char;
     scene.add(LETTER.mesh);
@@ -1352,8 +1358,15 @@ window.addEventListener('keydown', (e) => {
     e.preventDefault();
     if (G.mode === 'racing' || G.mode === 'countdown') beginCharge();
     else if (G.mode === 'menu') {
-      // splash → how-to; from the how-to modal Space launches the race
-      if (!hud.howtoScreen.classList.contains('hidden')) startRace(false);
+      // splash → how-to; from the pre-race how-to Space launches the race.
+      // The CONTROLS-HELP modal (ⓘ from the splash) is the same screen with
+      // .howtoModal — there the flow buttons are hidden and no game mode has
+      // been chosen, so Space must CLOSE it, never silently start a race in
+      // whatever gameMode happened to be set last (QA finding B1).
+      if (!hud.howtoScreen.classList.contains('hidden')) {
+        if (hud.howtoScreen.classList.contains('howtoModal')) hud.howtoCloseBtn.click();
+        else startRace(false);
+      }
       else showHowto();
     }
     else if (G.mode === 'finished' && G.finishT > 1.2 && G.resultStage === 2) {
@@ -2019,8 +2032,10 @@ hud.howtoCloseBtn.addEventListener('click', (e) => {
     howtoCameFromMenu = false;
   }
 });
-// the modal ✕ (controls-icon presentation) closes exactly like the legacy CTA
-$('howtoModalX').addEventListener('click', () => hud.howtoCloseBtn.click());
+// the modal ✕ (controls-icon presentation) closes exactly like the legacy CTA.
+// blur() the ✕ ITSELF (Regel 2) — the synthetic click only blurs closeBtn,
+// so a focused ✕ would re-trigger on a later Enter press (QA finding B3).
+$('howtoModalX').addEventListener('click', (e) => { e.currentTarget.blur(); hud.howtoCloseBtn.click(); });
 // leaderboard modal with "I dag" (today's daily board) / "Tidenes" (all-time) tabs
 function selectLbTab(day) {
   $('lbTabDay').classList.toggle('active', !!day);
@@ -2291,6 +2306,9 @@ hud.startNewVoyageBtn.addEventListener('click', (e) => {
   voyage = loadVoyage();
   voyageId = getOrCreateVoyageId();
   openVoyageScreen(hud.voyageScreen, true);
+  // fromScreen === the voyage screen itself here, which would make Back a
+  // hide-then-show no-op (QA B9) — the only sensible exit is the splash
+  voyageReturnScreen = hud.startScreen;
 });
 // best-effort "where do I stand" line under the done message — same
 // approximate rank math as renderVoyageRankBanner()'s no-freshResult
@@ -2312,7 +2330,7 @@ async function renderVoyageDoneStatus() {
   // correct for solo/offline play) rather than leaving a permanent dash.
   let placeText = ordinal(1);
   try {
-    const res = await fetch('/.netlify/functions/get-voyage', { cache: 'no-store' });
+    const res = await fetchT('/.netlify/functions/get-voyage', { cache: 'no-store' });
     if (!res.ok) throw new Error('offline');
     const j = await res.json();
     const list = Array.isArray(j.scores) ? j.scores : [];
@@ -2606,12 +2624,25 @@ async function signRun(run) {
   return [...new Uint8Array(sig)].map((b) => b.toString(16).padStart(2, '0')).join('');
 }
 
+// Every backend call goes through this instead of bare fetch(): a SLOW-but-
+// alive endpoint never rejects on its own, so without a deadline the awaits
+// in saveScore()/renderLeaderboards() hang forever — the result screen stuck
+// on "Saving…" with its buttons never revealed, the leaderboard stuck on its
+// spinner instead of falling back to cache (QA load-test finding). A 10 s
+// abort turns "hanging" into the same rejected-promise path every caller
+// already handles for a DOWN endpoint (saveError / cached list).
+function fetchT(url, opts = {}, timeoutMs = 10_000) {
+  const ctl = new AbortController();
+  const t = setTimeout(() => ctl.abort(), timeoutMs);
+  return fetch(url, { ...opts, signal: ctl.signal }).finally(() => clearTimeout(t));
+}
+
 // fetch a board (day = ISO date for the daily board, null = all-time) + a fresh
 // nonce; caches on success, null on any failure.
 async function fetchGlobal(day = null) {
   try {
     const url = '/.netlify/functions/get-scores' + (day ? `?day=${encodeURIComponent(day)}` : '');
-    const res = await fetch(url, { cache: 'no-store' });
+    const res = await fetchT(url, { cache: 'no-store' });
     if (!res.ok) return null;
     const j = await res.json();
     if (j.nonce) currentNonce = j.nonce;
@@ -2703,7 +2734,7 @@ let voyageId = getOrCreateVoyageId();
 
 async function issueStageToken(stage, timeMs) {
   try {
-    const res = await fetch('/.netlify/functions/issue-stage-token', {
+    const res = await fetchT('/.netlify/functions/issue-stage-token', {
       method: 'POST', headers: { 'content-type': 'application/json' },
       body: JSON.stringify({ voyageId, stage, timeMs }),
     });
@@ -2715,7 +2746,7 @@ async function issueStageToken(stage, timeMs) {
 async function submitVoyageTokens(tokens) {
   try {
     const alias = localStorage.getItem(ALIAS_KEY) || 'Unknown viking';
-    const res = await fetch('/.netlify/functions/submit-voyage', {
+    const res = await fetchT('/.netlify/functions/submit-voyage', {
       method: 'POST', headers: { 'content-type': 'application/json' },
       body: JSON.stringify({ alias, voyageId, tokens }),
     });
@@ -2779,7 +2810,7 @@ async function renderStoryModeLeaderboard() {
     entry: { id: myId, alias: localStorage.getItem(ALIAS_KEY) || 'You', totalMs: localTotalMs },
   }, $('lbStoryList'));
   try {
-    const res = await fetch('/.netlify/functions/get-voyage', { cache: 'no-store' });
+    const res = await fetchT('/.netlify/functions/get-voyage', { cache: 'no-store' });
     if (!res.ok) throw new Error('offline');
     const j = await res.json();
     const list = Array.isArray(j.scores) ? j.scores : [];
@@ -2944,7 +2975,7 @@ async function renderVoyageRankBanner(freshResult = null) {
     hud.voyageRankBanner.textContent = "🏆 Rank appears once you're back online";
   };
   try {
-    const res = await fetch('/.netlify/functions/get-voyage', { cache: 'no-store' });
+    const res = await fetchT('/.netlify/functions/get-voyage', { cache: 'no-store' });
     if (!res.ok) { offlineBanner(); return; }
     const j = await res.json();
     // per-stage/"so far" placements apply after EVERY voyage run — the
@@ -3041,7 +3072,7 @@ async function saveScore({ silent = false } = {}) {
       if (!currentNonce) await fetchGlobal();
       if (currentNonce) {
         const sig = await signRun(run);
-        const res = await fetch('/.netlify/functions/submit-score', {
+        const res = await fetchT('/.netlify/functions/submit-score', {
           method: 'POST',
           headers: { 'content-type': 'application/json' },
           body: JSON.stringify({ ...run, day: DAILY_KEY, nonce: currentNonce, sig }),
@@ -3122,7 +3153,7 @@ async function shareChallenge(msgEl, btnEl) {
   let url;
   try {
     const alias = String(hud.aliasInput.value || localStorage.getItem(ALIAS_KEY) || 'Unknown viking').trim().slice(0, 14);
-    const res = await fetch('/.netlify/functions/create-challenge', {
+    const res = await fetchT('/.netlify/functions/create-challenge', {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({
@@ -3214,11 +3245,17 @@ function initChallengeFromURL() {
   INTRO.active = false;
   hideIntroLandmarks();
   hideWinsenIntroCard();
+  // park the fleet where endIntro()'s handover would have left it — skipping
+  // the intro used to leave both hulls stranded on the intro start line
+  // ~160 m up-course, so declining the duel showed a menu with no boats in
+  // frame (QA B8)
+  G.x = 0; G.z = 0; G.heading = 0; G.speed = 0;
+  R.x = 14; R.z = 0; R.heading = 0; R.speed = 0;
   camPos.set(0, 15.5, 27);
   document.getElementById('cinebars').classList.remove('on');
   document.getElementById('controlsBtn').style.display = ''; // hidden during the intro — see index.html
 
-  fetch(`/.netlify/functions/get-challenge?id=${encodeURIComponent(id)}`)
+  fetchT(`/.netlify/functions/get-challenge?id=${encodeURIComponent(id)}`)
     .then((res) => { if (!res.ok) throw new Error('not-found'); return res.json(); })
     .then((entry) => {
       if (!entry || !Array.isArray(entry.track) || entry.track.length < 2) throw new Error('bad-data');
@@ -3500,6 +3537,14 @@ function startRace(quick) {
   G.combo = 0; G.bar = 0; G.hitStop = 0; G.fovPunch = 0;
   G.cbHalf = false; G.cbSprint = false; G.cbLandmark = false; G.lastLead = true;
   bloomPulse = 0; // Regel 1 — a landmark/turbo flash must never bleed into the next race
+  // ...and the PASS itself must snap back too: the decay branch only writes
+  // strength while bloomPulse > 0, so zeroing the pulse alone would freeze
+  // whatever boosted strength a result-screen firework left behind (QA B4).
+  bloomPass.strength = BLOOM_BASE;
+  // speed vignette is only written inside the racing branch — without this
+  // the last raced value (~1.0 at the finish line) sits over the result
+  // screen, menu and the whole next countdown (QA B5).
+  hud.vignette.style.opacity = 0;
   fbLockUntil = 0;
   shakeAmt = 0; // Regel 3 — leftover camera-shake from a hit right at the finish must not bleed into the next race
   updateComboBadge();
@@ -3646,6 +3691,7 @@ function returnToMenu() {
   G.strokePhase = 0; G.lastStrokeAt = -9;
   G.combo = 0; updateComboBadge();
   hud.boostGlow.style.opacity = 0;
+  hud.vignette.style.opacity = 0; // racing-branch-only write — clear it here too (QA B5)
   document.querySelectorAll('.confetti').forEach((el) => el.remove());
   stopVoyageDust(); // never let the Voyage Complete dust loop survive into a new/reset race
   voyageDoneFX.stop(); // ditto its shine sweep — only reachable from Voyage Complete's own Menu button
@@ -3718,6 +3764,7 @@ function finishRace() {
   setSeagullScene('result');
   G.finishT = 0;
   hud.boostGlow.style.opacity = 0;
+  hud.vignette.style.opacity = 0; // don't let the finish-line speed vignette sit over the result screen (QA B5)
   whistle();
   setTimeout(crowd, 350);
   // this run's track, sealed at the finish line, regardless of record status —
@@ -3945,6 +3992,10 @@ function finishRace() {
     // "Ro igjen" reads as "repeat this run" — voyage mode replaces retryBtn
     // with two purpose-built buttons instead (Fase 3e).
     hud.retryBtn.style.display = 'none';
+    // a previous voyage's "final time saved!" toast must never greet the
+    // first stage-1 result of a NEW voyage — only the stage-5 branch below
+    // used to clear it (QA B6)
+    hud.savedMsg.classList.remove('show');
     hud.repeatStageBtn.style.display = '';
     hud.repeatStageBtn.textContent = `Row stage ${stageBeforeRun.id} again`;
     hud.nextStageBtn.style.display = '';

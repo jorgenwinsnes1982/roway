@@ -10,6 +10,7 @@
 // Netlify v2 function (ESM default export) — required so Blobs is auto-injected
 // under `netlify dev`.
 import { getStore } from '@netlify/blobs';
+import { rateLimitAllow } from './lib/blobcas.js';
 import { randomBytes } from 'node:crypto';
 
 const RATE_MAX = 5;                    // creations per IP...
@@ -34,13 +35,12 @@ export default async (req, context) => {
   const rate = getStore('rate');
   const now = Date.now();
 
-  // --- rate limit per IP (own bucket — separate from submit-score's budget) ---
+  // --- rate limit per IP (own bucket — separate from submit-score's budget;
+  // atomic counter, see lib/blobcas.js) ---
   const ip = context?.ip || req.headers.get('x-nf-client-connection-ip') || 'unknown';
-  const rl = (await rate.get(`rate:challenge:${ip}`, { type: 'json' })) || { count: 0, start: now };
-  if (now - rl.start > RATE_WINDOW_MS) { rl.count = 0; rl.start = now; }
-  rl.count++;
-  await rate.setJSON(`rate:challenge:${ip}`, rl);
-  if (rl.count > RATE_MAX) return json(429, { error: 'rate-limit' });
+  if (!(await rateLimitAllow(rate, `rate:challenge:${ip}`, now, RATE_WINDOW_MS, RATE_MAX))) {
+    return json(429, { error: 'rate-limit' });
+  }
 
   // --- alias ---
   const alias = String(data.alias ?? '').trim().slice(0, 14).replace(/[<>&"']/g, '');
