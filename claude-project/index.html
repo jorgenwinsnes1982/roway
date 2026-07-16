@@ -125,6 +125,14 @@
   </script>
 
   <link rel="icon" href="/norge-skjold.png">
+  <!-- rowbar.png is the FIRST thing the player sees any real detail on (the
+       preloader's power-bar art, visible before intro/splash even reveal) —
+       fetched from HTML-parse time in parallel with everything else, instead
+       of only starting once main.js's module body reaches the `new Image()`
+       line further down. See stepPreload()'s rowbarLoaded gate in main.js:
+       the preloader draws NOTHING until this resolves, so a fast preload
+       here is what keeps that gate from ever being visible. -->
+  <link rel="preload" as="image" href="/buttons/rowbar.png" fetchpriority="high">
   <!-- Cinzel: Roman-inspired engraved serif — headings/display text (see the
        single #hud font-family rule below; everything inherits it by default).
        Marcellus: a readable serif used for body/paragraph copy (.introText)
@@ -561,7 +569,7 @@
        sitting in the body-copy rhythm like every other line */
     .aboutChant {
       font-family: "Cinzel", serif; font-weight: 900; letter-spacing: 3px;
-      font-size: clamp(24px, 5vw, 32px); color: #fff; text-align: center;
+      font-size: clamp(24px, 5vw, 32px); color: #fff; text-align: left;
       text-shadow: 0 2px 8px rgba(0, 0, 0, .5);
       margin: 10px 0 16px;
     }
@@ -597,15 +605,14 @@
       font-size: 14.5px; line-height: 1.6; color: rgba(255, 255, 255, .72);
     }
     /* the actual signed name — Jørgen's own cursive signature mark
-       (public/sign.svg, 171x65, its native lime-green), the same sign-off
-       winsen.no closes its own About page with. Sized to read as a compact
-       flourish ABOVE the printed title, not as its own headline — at this
-       aspect ratio (2.6:1, much squarer than the old wide lockup this
-       replaced) matching the old 300px width would render it ~115px tall
-       and blow out the whole block. */
+       (public/sign.svg, 171x65, recoloured from its native lime-green to
+       #ffd25e so it matches the rest of the page's gold accent instead of
+       standing out as a different brand colour), the same sign-off
+       winsen.no closes its own About page with. Sized small — a compact
+       flourish above the printed title, not its own headline. */
     .aboutSignatureImg {
       display: block; margin: 0 auto 10px;
-      width: min(190px, 48%); height: auto;
+      width: min(114px, 29%); height: auto;
     }
     /* position/title — the one thing the signature mark no longer carries
        on its own, printed cleanly underneath it */

@@ -1914,6 +1914,20 @@ function drawPreloadBar(pct, P = PEND_PRELOAD) {
 const PRELOAD = { active: true, t: 0, DURATION: 2.2, EXPLODE_HOLD: 0.7, exploded: false, holdT: 0, musicWaitT: 0, MUSIC_WAIT_CAP: 6 };
 function stepPreload(dt) {
   if (!PRELOAD.active) return;
+  // Don't draw ANYTHING — not even the "still loading" placeholder band —
+  // until rowbar.png itself is ready. The old behaviour drew a thin
+  // placeholder line immediately and swapped in the real bar art whenever
+  // the (600 KB) PNG happened to finish, which on a slow load reads as "the
+  // charge animation starts, then the real graphics pop in mid-animation".
+  // Skipping the whole step means the canvas stays whatever it already was
+  // (blank, over the dark #preloaderScreen background) until the real art
+  // exists, so the very FIRST thing ever painted here is the final graphics
+  // — no placeholder to swap away from. Paired with the <link rel=preload
+  // fetchpriority=high> in index.html (fetch starts at HTML-parse time, not
+  // wherever this module's `new Image()` line happens to execute), the gate
+  // should resolve before the boot sequence even reaches this call on any
+  // reasonable connection.
+  if (!rowbarLoaded) return;
   stepPendulumFX(dt, 0, false, PEND_PRELOAD); // no bob driven here — just ages flash/splash
   if (!PRELOAD.exploded) {
     PRELOAD.t += dt;
