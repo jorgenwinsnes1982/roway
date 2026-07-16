@@ -141,7 +141,19 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400..900&family=Domine:wght@400..700&display=swap" rel="stylesheet">
+  <!-- Norsebold: self-hosted display face for headings/titles (main title,
+       screen headings, modal + section titles). Lives in public/fonts/ so
+       Vite copies it verbatim into dist; preloaded because the splash title
+       renders with it immediately. Body copy stays Cinzel/Domine. -->
+  <link rel="preload" as="font" type="font/woff2" href="/fonts/Norsebold.woff2" crossorigin>
   <style>
+    @font-face {
+      font-family: "Norsebold";
+      src: url("/fonts/Norsebold.woff2") format("woff2");
+      font-weight: normal;
+      font-style: normal;
+      font-display: swap;
+    }
     * { margin: 0; padding: 0; box-sizing: border-box; }
     /* hard-lock to the device width: overflow:hidden alone doesn't stop iOS
        Safari's rubber-band bounce from revealing a sideways sliver — pinning
@@ -587,7 +599,7 @@
        re-skinned in ROWAY's own gold/Cinzel language rather than copied
        wholesale (this is a Viking saga, not a SaaS landing page). ---- */
     .aboutEyebrow {
-      font-family: "Cinzel", serif; font-size: 15px; font-weight: 700;
+      font-family: "Norsebold", serif; font-size: 15px; font-weight: 700;
       letter-spacing: 2.5px; text-transform: uppercase;
       color: rgba(255, 210, 94, .78);
       /* big pause BEFORE a new chapter, tight hug to its own paragraph
@@ -725,7 +737,7 @@
       box-shadow: 0 12px 40px rgba(0,0,0,.6);
       max-width: min(420px, 88vw);
     }
-    .confirmTitle { font-size: 26px; font-weight: 900; letter-spacing: 1px; margin-bottom: 8px; }
+    .confirmTitle { font-family: "Norsebold", serif; font-size: 26px; font-weight: 900; letter-spacing: 1px; margin-bottom: 8px; }
     .confirmText { font-size: 14px; opacity: .85; line-height: 1.6; margin-bottom: 18px; }
 
     /* Mobile: keep all three utility buttons at the TOP (smaller), and push
@@ -965,13 +977,14 @@
        .screen default keeps the stats/CTA column clearly in front */
     #resultScreen { background: rgba(0, 0, 0, .88); }
     .title {
+      font-family: "Norsebold", serif;
       font-size: clamp(38px, 7vw, 72px); font-weight: 900; letter-spacing: 4px;
       background: linear-gradient(180deg, #fff 30%, #9db5e8);
       -webkit-background-clip: text; background-clip: text; color: transparent;
       text-transform: uppercase; line-height: 1.05;
       filter: drop-shadow(0 4px 14px rgba(0,0,0,.6));
     }
-    .subtitle { font-size: clamp(14px, 2.2vw, 20px); font-weight: 600; letter-spacing: 5px; color: var(--no-red); text-transform: uppercase;
+    .subtitle { font-family: "Norsebold", serif; font-size: clamp(14px, 2.2vw, 20px); font-weight: 600; letter-spacing: 5px; color: var(--no-red); text-transform: uppercase;
       text-shadow: 0 0 18px rgba(186,12,47,.5); }
     /* splash screen keeps a single accent (gold) for its text hierarchy — red stays
        reserved for the primary CTA button so the screen doesn't compete for attention */
@@ -1778,6 +1791,7 @@
        without needing a new art asset. */
     #placeBanner {
       position: relative;
+      font-family: "Norsebold", serif;
       font-size: clamp(33px, 7vw, 64px); font-weight: 900; letter-spacing: 1px;
       line-height: 0.98; text-transform: uppercase;
       background: linear-gradient(180deg, #D5F9FB 0%, #6EAEFA 100%);
@@ -1830,7 +1844,7 @@
     #savedMsg.show { display: block; }
 
     .lbWrap { width: min(400px, 84vw); }
-    .lbTitle { font-size: 17px; font-weight: 700; letter-spacing: 2.5px; opacity: .85; margin-bottom: 6px; text-align: center; }
+    .lbTitle { font-family: "Norsebold", serif; font-size: 17px; font-weight: 700; letter-spacing: 2.5px; opacity: .85; margin-bottom: 6px; text-align: center; }
     .lbList {
       list-style: none; counter-reset: lb; max-height: 26vh; overflow-y: auto;
       background: rgba(0, 20, 60, .55); border: 1px solid rgba(255,255,255,.2);
