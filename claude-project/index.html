@@ -957,9 +957,13 @@
     /* Result-card redesign: the shield reads as the top of the "trophy
        moment" now, not a small badge — bumped up from 64px */
     #resultShield {
-      width: 96px; height: auto;
-      filter: drop-shadow(0 4px 18px rgba(255, 210, 94, .45));
+      width: 84px; height: auto;
+      filter: drop-shadow(0 3px 12px rgba(255, 210, 94, .28));
     }
+    /* result screen: the frozen 3D finish scene behind this UI is busy
+       (goal posts, confetti, banners) — a deeper overlay than the shared
+       .screen default keeps the stats/CTA column clearly in front */
+    #resultScreen { background: rgba(0, 0, 0, .88); }
     .title {
       font-size: clamp(38px, 7vw, 72px); font-weight: 900; letter-spacing: 4px;
       background: linear-gradient(180deg, #fff 30%, #9db5e8);
@@ -1193,27 +1197,18 @@
        verbatim) replaces the old wall of separate lines (score, breakdown,
        voyage progress, gate-penalty bar). Placement (#placeBanner) stays the
        hero headline above the card; everything numeric lives inside it. */
+    /* one refined gold border + a soft drop shadow — the old triple outline
+       (dark ring + second gold ring) and the diamond corner ornaments read
+       as competing frames rather than one premium card */
     #resultCard {
       position: relative;
       width: min(380px, 88vw);
       margin: 6px auto 0;
       background: linear-gradient(180deg, #17140f, #0a0908);
-      border: 1px solid #b98a3e;
+      border: 1px solid rgba(185, 138, 62, .8);
       border-radius: 10px;
-      box-shadow: 0 0 0 3px rgba(8, 7, 6, .85), 0 0 0 4px rgba(185, 138, 62, .5),
-                  inset 0 0 26px rgba(0, 0, 0, .6);
-      padding: 30px 26px 24px;
-    }
-    #resultCard::before {
-      content: ''; position: absolute; z-index: 2; left: 50%; top: 0;
-      width: 15px; height: 15px; transform: translate(-50%, -50%) rotate(45deg);
-      background: #0d0b09; border: 2px solid #c9973f;
-      box-shadow: 0 0 8px rgba(0, 0, 0, .6);
-    }
-    #resultCard::after {
-      content: ''; position: absolute; z-index: 3; left: 50%; top: 0;
-      width: 5px; height: 5px; transform: translate(-50%, -50%) rotate(45deg);
-      background: #c9973f;
+      box-shadow: 0 12px 32px rgba(0, 0, 0, .45), inset 0 0 22px rgba(0, 0, 0, .55);
+      padding: 24px 24px 18px;
     }
     /* the big number + its "Pts" unit, baseline-aligned like a suffix */
     #resCardScoreRow { display: flex; align-items: baseline; justify-content: center; gap: 8px; }
@@ -1228,15 +1223,10 @@
       font-size: 15px; font-weight: 800; letter-spacing: 1px; text-transform: uppercase;
       color: #8fd0ff; text-shadow: 0 0 8px rgba(120,190,255,.4);
     }
-    /* thin full-width divider with a small diamond centred on it */
+    /* thin full-width divider — plain line, no centred diamond ornament */
     #resCardDivider {
-      position: relative; width: 100%; height: 1px; margin: 18px 0 16px;
-      background: linear-gradient(90deg, transparent, rgba(185,138,62,.65) 50%, transparent);
-    }
-    #resCardDivider::before {
-      content: ''; position: absolute; top: 50%; left: 50%;
-      width: 6px; height: 6px; transform: translate(-50%, -50%) rotate(45deg);
-      background: #c9973f;
+      width: 100%; height: 1px; margin: 12px 0 10px;
+      background: linear-gradient(90deg, transparent, rgba(185,138,62,.55) 50%, transparent);
     }
     /* TIME / RANK / BALLS row, split by thin gold rules */
     #resCardStatsRow { display: flex; justify-content: center; align-items: stretch; }
@@ -1261,11 +1251,10 @@
       display: inline-flex; align-items: center; gap: 10px;
       font-size: 13px; font-weight: 800; letter-spacing: .6px; text-transform: uppercase;
       color: #ffd25e; text-shadow: 0 0 10px rgba(255,210,94,.4);
-      padding: 8px 20px; border-radius: 999px;
+      padding: 6px 16px; border-radius: 999px;
       border: 1px solid rgba(255,211,106,.55); background: rgba(0,0,0,.28);
-      margin: 0 0 14px;
+      margin: 0 0 10px;
     }
-    #newBestBadge::before, #newBestBadge::after { content: '❖'; font-size: 10px; opacity: .8; }
     #newBestBadge.hiddenMsg { display: none; }
     /* the stage NAME (e.g. "OUT OF THE FJORD") — a small pill-style line
        above the big "COMPLETED" headline, same treatment as the trimmed
@@ -1684,7 +1673,9 @@
       background: linear-gradient(180deg, #D5F9FB 0%, #6EAEFA 100%);
       -webkit-background-clip: text; background-clip: text; color: transparent;
       filter: drop-shadow(0 0 12px rgba(110,174,250,.45));
-      text-transform: uppercase; margin-top: 4px;
+      /* extra top margin (on top of the .screen flex gap) — clear visual
+         separation between the stat card block and the claim-your-name step */
+      text-transform: uppercase; margin-top: 16px;
     }
     #lbNameSubtext {
       /* Domine, NOT Cinzel: Cinzel has no true lowercase (its a-z glyphs
@@ -1699,21 +1690,13 @@
     /* input and Claim button stacked — one clear step-1 column, not a
        side-by-side form row */
     #saveRow {
-      display: flex; flex-direction: column; align-items: center; gap: 10px;
+      display: flex; flex-direction: column; align-items: center; gap: 12px;
       /* same width formula as .menuBtns--stack (the splash screen's ROW RACE /
          BRING HOME THE TROPHY column) — the input/Claim button read as the
          same "width class" of control as the rest of the game's CTAs */
-      width: min(360px, 84vw); margin: 4px auto 0;
+      width: min(360px, 84vw); margin: 6px auto 0;
     }
     #saveRow #aliasInput, #saveRow #saveScoreBtn { width: 100%; }
-    /* #saveScoreBtn's own width above only sizes the inner label — the
-       raster-btn wrapper enhanceRuneButtons() puts around it is an
-       inline-grid that shrinks to fit its text by default (see .raster-btn),
-       which is what made the button read narrower than the input above it.
-       Stretch the wrapper itself to match; the grid's middle "1fr" column
-       (see .raster-btn) absorbs the extra width, so the end caps stay their
-       normal size — no art stretching. */
-    #saveRow .raster-btn { width: 100%; }
     /* dark navy field, thin gold border, soft inner shadow — reads as an
        engraved rune-tablet slot rather than a generic web input */
     #aliasInput {
@@ -1731,10 +1714,33 @@
       box-shadow: inset 0 2px 6px rgba(0,0,0,.55), 0 0 0 3px rgba(255, 211, 106, .28), 0 0 14px rgba(255,211,106,.35);
     }
     #aliasInput::placeholder { color: rgba(255,246,216,.4); text-transform: uppercase; }
+    /* clean flat primary CTA — deliberately NOT raster-skinned (see
+       enhanceRuneButtons in src/runeButtons.js): one red gradient, restrained
+       gold trim and a faint sheen, matching the simplified input above.
+       Pressed state moves down and loses lift shadow — physical, not just
+       a colour change. */
     #saveScoreBtn {
-      padding: 12px 22px; font-size: 13px; font-weight: 800;
-      letter-spacing: 1px; font-family: inherit; color: #fff; cursor: pointer;
-      text-transform: uppercase; min-height: 44px; box-sizing: border-box;
+      padding: 12px 22px; font-size: 14px; font-weight: 800;
+      letter-spacing: 1.5px; font-family: inherit; color: #fff; cursor: pointer;
+      text-transform: uppercase; min-height: 48px; box-sizing: border-box;
+      background:
+        linear-gradient(180deg, rgba(255,255,255,.10), rgba(255,255,255,0) 45%),
+        linear-gradient(180deg, #d81a3f, var(--no-red, #BA0C2F));
+      border: 1px solid var(--gold-deep, #D6A145); border-radius: 8px;
+      box-shadow: 0 4px 12px rgba(0,0,0,.45), inset 0 1px 0 rgba(255,255,255,.14);
+      text-shadow: 0 1px 3px rgba(0,0,0,.5);
+      transition: transform .12s ease, box-shadow .12s ease, filter .12s ease;
+    }
+    #saveScoreBtn:hover:not(:disabled) { filter: brightness(1.1); transform: translateY(-1px); }
+    #saveScoreBtn:active:not(:disabled) {
+      transform: translateY(2px);
+      box-shadow: 0 1px 4px rgba(0,0,0,.4), inset 0 1px 0 rgba(255,255,255,.08);
+      transition-duration: .05s;
+    }
+    #saveScoreBtn:focus-visible {
+      outline: none;
+      border-color: var(--gold, #FFD36A);
+      box-shadow: 0 0 0 3px rgba(255, 211, 106, .28), 0 4px 12px rgba(0,0,0,.45);
     }
     #saveScoreBtn:disabled { opacity: .5; cursor: not-allowed; }
     /* reserved space so the error line appearing/disappearing never shifts
@@ -1767,12 +1773,12 @@
        without needing a new art asset. */
     #placeBanner {
       position: relative;
-      font-size: clamp(42px, 9vw, 84px); font-weight: 900; letter-spacing: 1px;
-      line-height: 1.02; text-transform: uppercase;
+      font-size: clamp(33px, 7vw, 64px); font-weight: 900; letter-spacing: 1px;
+      line-height: 0.98; text-transform: uppercase;
       background: linear-gradient(180deg, #D5F9FB 0%, #6EAEFA 100%);
       -webkit-background-clip: text; background-clip: text; color: transparent;
-      filter: drop-shadow(0 6px 22px rgba(110,174,250,.5)) drop-shadow(0 2px 8px rgba(0,0,0,.6));
-      margin-top: 6px;
+      filter: drop-shadow(0 4px 14px rgba(110,174,250,.35)) drop-shadow(0 2px 8px rgba(0,0,0,.6));
+      margin-top: 2px;
       display: flex; align-items: center; justify-content: center; gap: 16px;
     }
     #placeBanner:empty { display: none; }
@@ -2297,15 +2303,16 @@
          measured 708px of column on a bars-visible iPhone 12 (664px). Slim
          the three biggest line items so the whole state fits with margin:
          banner one size-step down, tighter card padding, shorter lb preview. */
-      /* 25% under the old 42px mobile floor, per request */
-      #placeBanner { font-size: clamp(31px, 7vw, 84px); margin-top: 0; }
-      #resultCard { padding: 20px 22px 16px; margin-top: 2px; }
+      /* proportional step down from the (already reduced) desktop banner */
+      #placeBanner { font-size: clamp(26px, 6vw, 64px); margin-top: 0; }
+      #resultCard { padding: 18px 20px 14px; margin-top: 2px; }
       #lbResultWrap { max-height: 88px; overflow: hidden; }
       /* halve the card → "You made the leaderboard!" distance: the (often
          invisible) ticker pill between them is the bulk of it — slim it and
          pull both neighbours in. ~62px → ~36px with the pill showing. */
       #resultTicker { padding: 4px 16px; font-size: 13px; margin: -6px 0; }
-      #lbNameHeadline { margin-top: 0; }
+      /* keep SOME card → headline separation on mobile (desktop gets 16px) */
+      #lbNameHeadline { margin-top: 8px; }
     }
     /* Result screen only, taller phones only: the 664px-fit rules above were
        tuned for a bars-visible iPhone 12 — on anything with real headroom

@@ -3848,12 +3848,14 @@ function buildTickerMessages(run, gatesPassed, sc) {
   if (G.penaltyS > 0) {
     msgs.push(`⚠️ +${G.penaltyS.toLocaleString('en-US', { minimumFractionDigits: 1, maximumFractionDigits: 1 })}s gate penalty`);
   }
-  msgs.push(`⏱ Finished in ${fmtTime(run.time)}`); // always at least one message
+  // no "Finished in" fallback — it duplicated the card's TIME stat; with no
+  // bonuses at all the ticker simply stays empty (#resultTicker:empty hides it)
   return msgs;
 }
 let tickerTimer = null;
 function startResultTicker(messages) {
   stopResultTicker();
+  if (!messages.length) { hud.resultTicker.textContent = ''; return; }
   let i = 0;
   const show = () => {
     hud.resultTicker.classList.remove('tickerIn');
