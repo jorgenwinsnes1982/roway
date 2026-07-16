@@ -727,21 +727,31 @@
        #cinebars, so it never intercepts the skip-tap listener underneath.
        Sits above the 3D canvas but below the preloader (z-index scale: see
        #preloaderScreen), which will already be gone by the time this shows. ---- */
+    /* top:50% — the letterbox bars (#cinebars, 11vh each) are symmetric top
+       and bottom, so the visible cinematic area is already centred on the
+       full viewport; this just centres the card on THAT, not on the
+       viewport's raw midpoint offset by some other element. */
     #winsenIntroCard {
-      position: absolute; left: 50%; top: 42%; z-index: 15;
-      width: min(58vw, 420px); pointer-events: none;
-      opacity: 0; transform: translate(-50%, -46%) scale(.82);
-      filter: drop-shadow(0 4px 18px rgba(0,0,0,.55));
-      transition: opacity .5s ease, transform .5s cubic-bezier(.34, 1.56, .64, 1);
+      position: absolute; left: 50%; top: 50%; z-index: 15;
+      width: min(70vw, 504px); pointer-events: none;
+      opacity: 0; filter: blur(10px) drop-shadow(0 4px 18px rgba(0,0,0,.55));
+      transform: translate(-50%, -46%) scale(.8);
+      transition: opacity .55s ease, transform .55s cubic-bezier(.34, 1.56, .64, 1),
+                  filter .55s ease;
     }
     #winsenIntroCard img { display: block; width: 100%; height: auto; }
-    #winsenIntroCard.show { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+    #winsenIntroCard.show {
+      opacity: 1; transform: translate(-50%, -50%) scale(1);
+      filter: blur(0) drop-shadow(0 4px 18px rgba(0,0,0,.55)) drop-shadow(0 0 22px rgba(255,210,94,.4));
+    }
     #winsenIntroCard.hide {
-      opacity: 0; transform: translate(-50%, -54%) scale(1.06);
-      transition: opacity .55s cubic-bezier(.4, 0, 1, 1), transform .55s cubic-bezier(.4, 0, 1, 1);
+      opacity: 0; transform: translate(-50%, -55%) scale(1.08);
+      filter: blur(8px) drop-shadow(0 4px 18px rgba(0,0,0,.55));
+      transition: opacity .5s cubic-bezier(.4, 0, 1, 1), transform .5s cubic-bezier(.4, 0, 1, 1),
+                  filter .5s cubic-bezier(.4, 0, 1, 1);
     }
     @media (max-width: 640px) {
-      #winsenIntroCard { width: min(72vw, 320px); top: 39%; }
+      #winsenIntroCard { width: min(72vw, 320px); }
     }
 
     /* ---- RO! tempo cue ---- */
