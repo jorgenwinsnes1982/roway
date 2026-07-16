@@ -64,9 +64,35 @@ function ensureCtx() {
       if (ctx.state === 'running') { tryStartMusic(); trySeagullLoop(); }
     });
   }
-  if (ctx.state === 'suspended') ctx.resume();
+  // 'interrupted' is iOS-specific (phone call, Siri, app switch, lock) and
+  // does NOT auto-resume — treat it exactly like 'suspended'.
+  if (ctx.state === 'suspended' || ctx.state === 'interrupted') ctx.resume().catch(() => {});
   return ctx;
 }
+
+// Belt-and-braces resume for screen transitions (called from real button
+// gestures, so iOS honours the resume): make sure the context exists and is
+// running, the looping tracks are started (both are no-ops when already
+// live), and the music bus sits at the level the current mute/duck flags
+// say it should. Fixes "silent main menu" after iOS interrupted the audio
+// session mid-race (call/Siri/app switch/lock) — nothing in the old flow
+// ever resumed an 'interrupted' context unless a new SFX happened to fire.
+export function resumeAudio() {
+  ensureCtx();
+  tryStartMusic();
+  trySeagullLoop();
+  applyMusicGain();
+}
+
+// When the page comes back to the foreground, iOS often leaves the context
+// non-running. A programmatic resume outside a gesture may be refused —
+// harmless (catch below); the statechange listener in ensureCtx() restarts
+// the loops the moment it does succeed.
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'visible' && ctx && ctx.state !== 'running') {
+    ctx.resume().catch(() => {});
+  }
+});
 
 // Starts the track for real once BOTH are true: it's decoded, and the
 // context is actually 'running' (i.e. a genuine gesture has unlocked audio —

@@ -7,7 +7,7 @@ import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
 import { createWater, sampleWater, setWaveScale } from './water.js';
 import { buildShip, poseStroke, cyclePose } from './ship.js';
 import { createSky, createFjord, createClouds, createCourse, disposeCourse, updateCourse, createSeagulls, createFogBanks, createIntroLandmarks, COURSE_LENGTH, CHANNEL_HALF } from './world.js';
-import { initAudio, oarSplash, ding, thud, whistle, crowd, kick, hat, bass, whoosh, donk, roVoice, fireworkBoom, setSfxMuted, isSfxMuted, setMusicMuted, isMusicMuted, setMusicDucked, setSeagullScene, hoverSparkle, hornSound, isMusicLoadSettled } from './audio.js';
+import { initAudio, oarSplash, ding, thud, whistle, crowd, kick, hat, bass, whoosh, donk, roVoice, fireworkBoom, setSfxMuted, isSfxMuted, setMusicMuted, isMusicMuted, setMusicDucked, setSeagullScene, hoverSparkle, hornSound, isMusicLoadSettled, resumeAudio } from './audio.js';
 import { createLogoFX, createHowtoFX, createVoyageDoneFX } from './logo.js';
 import { createShieldFX } from './shield.js';
 import { glDiag, glDiagCtx, glDiagWatch, glDiagNote, IS_IOS_WEBKIT } from './glDiag.js';
@@ -222,12 +222,23 @@ const camera = new THREE.PerspectiveCamera(58, window.innerWidth / window.innerH
 // the iPhone 16 Pro blank-canvas investigation — iOS/WebKit float-MSAA
 // support is historically fragile). All four passes are shared instances, so
 // the rebuild re-adds the same pass objects to the new composer.
+// iOS starts DIRECTLY on the safe target (UnsignedByte, no MSAA): field
+// evidence from the iPhone 16 Pro ?dev panels shows the fancy half-float
+// MSAA pipeline renders fine at boot, then its output dies to permanent
+// black mid-session (a suspected iOS-18 Metal-ANGLE half-float-MSAA resolve
+// bug — no contextlost, FBO complete, zero GL errors, output just goes
+// black). Rather than rendering on a target that provably corrupts and
+// repairing after the fact, iOS never uses it. Visual cost there: slightly
+// less HDR headroom into bloom + no RT-level MSAA at phone DPR. Desktop and
+// Android keep the full-quality target unchanged.
 let composer = new EffectComposer(
   renderer,
-  new THREE.WebGLRenderTarget(window.innerWidth, window.innerHeight, {
-    samples: 4,
-    type: THREE.HalfFloatType,
-  })
+  IS_IOS_WEBKIT
+    ? new THREE.WebGLRenderTarget(window.innerWidth, window.innerHeight)
+    : new THREE.WebGLRenderTarget(window.innerWidth, window.innerHeight, {
+        samples: 4,
+        type: THREE.HalfFloatType,
+      })
 );
 composer.setPixelRatio(PIXEL_RATIO);
 const renderPass = new RenderPass(scene, camera);
@@ -303,7 +314,7 @@ composer.addPass(outputPass);
 // when (and only when) it triggers: slightly less HDR headroom feeding bloom
 // and no RT-level MSAA — a small, iOS-only-in-practice degrade that beats a
 // permanently blank canvas. Never triggers on healthy devices.
-let composerSafeMode = false;
+let composerSafeMode = IS_IOS_WEBKIT; // iOS boots on the safe target (see composer above)
 // last-resort switch: if even the SAFE composer's framebuffer is unusable on
 // this device, frame() renders the scene directly (no bloom/vignette on that
 // device — but the world PAINTS, which beats a permanently blank canvas)
@@ -3623,6 +3634,10 @@ function startRace(quick) {
 function returnToMenu() {
   G.mode = 'menu';
   setMusicDucked(false);
+  // every path here is a real button click, so this gesture may legally
+  // resume an iOS-'interrupted' audio session — guarantees the theme +
+  // ambience actually play again on the menu (unless muted in Settings)
+  resumeAudio();
   setSeagullScene('menu');
   G.paused = false;
   G.speed = 0; G.heading = 0; G.x = 0; G.z = 0;
@@ -4727,12 +4742,10 @@ function update(dt, realDt = dt) {
       // did the rival cross a gate line — inside or outside?
       for (const gt of course.gates) {
         if (gt.rivalDone || R.z > gt.z) continue;
-        gt.rivalDone = true;
         if (Math.abs(R.x - gt.x) > gt.w / 2) {
-          // missed! wobble of shame, splash, penalty and a BOM! over the ship
+          // missed! wobble of shame, splash and a BOM! over the ship
           R.wobble = 1;
           R.bomT = 1.8;
-          R.speed *= 0.85;
           showFeedback('SWEDEN MISSED THE GATE! 🙈', '#7dff9e', true);
           ding(0.55);
           const rw2 = sampleWater(R.x, R.z, waterT).y;
@@ -4743,6 +4756,24 @@ function update(dt, realDt = dt) {
               0.5 + Math.random() * 0.4
             );
           }
+          if (G.gameMode === 'kapp') {
+            // KAPPRO: gates are hard checkpoints for SWEDEN too — same
+            // rewind-and-redo the player gets (GATE_REWIND_M into the
+            // guaranteed-clear approach lane, speed cut), so a rival blunder
+            // costs real distance instead of a token 15% slowdown. The gate
+            // stays !rivalDone: it re-arms on the next crossing, and the
+            // retry line is re-rolled INSIDE the opening so a blundered aim
+            // (the rare outside-the-pole roll above) can't miss forever.
+            R.z = gt.z + GATE_REWIND_M;
+            R.speed *= 0.25;
+            gt.rivalAim = Math.random() * 6 - 3;
+          } else {
+            // REISEN: soft miss, same as the player's — no rewind.
+            gt.rivalDone = true;
+            R.speed *= 0.85;
+          }
+        } else {
+          gt.rivalDone = true;
         }
       }
       if (R.finishTime === null && R.z <= course.finishZ) R.finishTime = G.time;
@@ -5190,8 +5221,10 @@ function frameInner(maxDt) {
   // samples when N%60===0 happens to coincide with a rendered frame — on the
   // field (iPhone 16 Pro panel) that starved the watchdog for 500+ frames
   // and stalled its repair ladder after step 1. Any rendered frame ≥1s after
-  // the previous sample now qualifies. Cost: two 1px readbacks per second.
-  if ((DEV_TOOLS || IS_IOS_WEBKIT) && now - lastPixelSampleT >= 1000) {
+  // the previous sample now qualifies (500ms on iOS, so the watchdog ladder
+  // resolves a black onset in ~1-2s — fast enough that a corruption during
+  // the intro is repaired before the splash UI finishes animating in).
+  if ((DEV_TOOLS || IS_IOS_WEBKIT) && now - lastPixelSampleT >= (IS_IOS_WEBKIT ? 500 : 1000)) {
     lastPixelSampleT = now;
     try {
       const gl = renderer.getContext();
@@ -5240,12 +5273,10 @@ setTimeout(() => {
   // to reject, so the world is guaranteed to paint (minus bloom/vignette on
   // that device only).
   if (IS_IOS_WEBKIT && !composerFboComplete()) {
-    rebuildComposerSafe('iOS: half-float MSAA framebuffer incomplete');
-    composer.render();
-    if (!composerFboComplete()) {
-      composerBypassed = true;
-      glDiagNote('iOS: safe framebuffer ALSO incomplete — bypassing composer (direct render)');
-    }
+    // iOS already boots on the safe composer, so an incomplete FBO here
+    // means even the plain UnsignedByte target is refused → direct render.
+    composerBypassed = true;
+    glDiagNote('iOS: safe framebuffer incomplete at boot — bypassing composer (direct render)');
   }
   glDiag.boot.prewarmDone = Math.round(performance.now());
 }, 0);
@@ -5322,7 +5353,15 @@ function iosPaintWatchdog(mid, sky) {
     composer.setSize(w, h);
     bloomPass.setSize(w * BLOOM_RES_SCALE, h * BLOOM_RES_SCALE);
   } else if (iosRepairStep === 2) {
-    rebuildComposerSafe('iOS watchdog: still black after realloc kick');
+    if (composerSafeMode) {
+      // iOS boots on the safe composer already — no fancier target to drop,
+      // so this rung folds into the next: straight to direct render.
+      iosRepairStep = 3;
+      composerBypassed = true;
+      glDiagNote('iOS watchdog: still black after realloc kick — bypassing composer (direct render)');
+    } else {
+      rebuildComposerSafe('iOS watchdog: still black after realloc kick');
+    }
   } else if (iosRepairStep === 3) {
     composerBypassed = true;
     glDiagNote('iOS watchdog: still black on safe composer — bypassing composer (direct render)');
