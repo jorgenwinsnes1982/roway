@@ -135,12 +135,12 @@
   <link rel="preload" as="image" href="/buttons/rowbar.png" fetchpriority="high">
   <!-- Cinzel: Roman-inspired engraved serif — headings/display text (see the
        single #hud font-family rule below; everything inherits it by default).
-       Marcellus: a readable serif used for body/paragraph copy (.introText)
+       Domine: a readable serif used for body/paragraph copy (.introText)
        — Cinzel has no true lowercase forms, so longer sentences stay on
-       Marcellus instead. -->
+       Domine instead. -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400..900&family=Marcellus&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400..900&family=Domine:wght@400..700&display=swap" rel="stylesheet">
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
     /* hard-lock to the device width: overflow:hidden alone doesn't stop iOS
@@ -484,7 +484,7 @@
     }
     /* ---- About-the-game modal: same gold-framed plate as settings/confirm,
        but wider and with a SCROLLING body — the text is the full making-of
-       story, not a dialog. Body copy on Marcellus (long sentence text — see
+       story, not a dialog. Body copy on Domine (long sentence text — see
        the font note at the top), themed thin scrollbar like the boards. */
     #aboutScreen { z-index: 50; }
     #aboutScreen .confirmBox {
@@ -537,7 +537,7 @@
     .aboutBody {
       max-height: min(56vh, 520px); overflow-y: auto; scroll-behavior: smooth;
       text-align: left; padding-right: 14px;
-      font-family: "Marcellus", serif;
+      font-family: "Domine", serif;
       font-size: 16.5px; line-height: 1.7; color: rgba(255, 255, 255, .88);
       scrollbar-width: thin; scrollbar-color: rgba(143, 208, 255, .4) transparent;
     }
@@ -595,7 +595,7 @@
        and tracking while keeping the gold "this is the point" emphasis */
     .aboutSignLong {
       text-transform: none; letter-spacing: .2px; font-weight: 700;
-      font-family: "Marcellus", serif;
+      font-family: "Domine", serif;
     }
     /* credit/contact block at the foot of the About text — set apart from
        the story above with a thin rule, same gold tint as the modal frame */
@@ -927,7 +927,7 @@
        reserved for the primary CTA button so the screen doesn't compete for attention */
     #startScreen .subtitle { color: #ffd25e; text-shadow: 0 0 18px rgba(255,210,94,.35); }
     .introText {
-      font-family: "Marcellus", serif;
+      font-family: "Domine", serif;
       font-size: clamp(15px, 2.4vw, 20px); font-weight: 500; line-height: 1.5; opacity: .95; max-width: 520px;
     }
     /* extra breathing room before the buttons/STEER-ROW lines below — the
@@ -1172,7 +1172,7 @@
     /* the big number + its "Pts" unit, baseline-aligned like a suffix */
     #resCardScoreRow { display: flex; align-items: baseline; justify-content: center; gap: 8px; }
     #resScore {
-      font-family: "Marcellus", serif; font-variant-numeric: tabular-nums;
+      font-family: "Domine", serif; font-variant-numeric: tabular-nums;
       font-size: clamp(34px, 8vw, 52px); font-weight: 900; line-height: 1;
       background: linear-gradient(180deg, #fff6d8 0%, #ffd25e 45%, #e8a318 100%);
       -webkit-background-clip: text; background-clip: text; color: transparent;
@@ -1203,7 +1203,7 @@
       color: #8fd0ff; text-shadow: 0 0 8px rgba(120,190,255,.4);
     }
     .resCardStatValue {
-      font-family: "Marcellus", serif; font-variant-numeric: tabular-nums;
+      font-family: "Domine", serif; font-variant-numeric: tabular-nums;
       font-size: clamp(19px, 4vw, 24px); font-weight: 800; color: #fff;
       text-shadow: 0 2px 6px rgba(0,0,0,.5);
     }
@@ -1393,7 +1393,7 @@
        overlapping — 24 (menuBtns bottom) + 206 (stack height) + 16 (gap). */
     #voyageScreen.stage-card-mode #voyageScreenTitle.voyageDoneMsg {
       bottom: 246px;
-      font-family: "Marcellus", serif;
+      font-family: "Domine", serif;
       font-size: clamp(15px, 2.4vw, 20px); font-weight: 500; line-height: 1.5;
       letter-spacing: normal; text-transform: none; opacity: .95;
       background: none; -webkit-background-clip: initial; background-clip: initial;
@@ -1430,7 +1430,7 @@
       backdrop-filter: blur(2px);
     }
     .voyageDoneStatValue {
-      font-family: "Marcellus", serif; font-variant-numeric: tabular-nums;
+      font-family: "Domine", serif; font-variant-numeric: tabular-nums;
       font-size: clamp(16px, 3.4vw, 22px); font-weight: 900; line-height: 1.1;
       background: linear-gradient(180deg, #fff6d8 0%, #ffd25e 45%, #e8a318 100%);
       -webkit-background-clip: text; background-clip: text; color: transparent;
@@ -1632,18 +1632,18 @@
        it (matches its max-width so the whole result column stays one clean
        vertical line). */
     #lbNameHeadline {
-      font-family: "Marcellus", serif;
+      font-family: "Domine", serif;
       font-size: clamp(17px, 3vw, 22px); font-weight: 900; letter-spacing: .5px;
       color: #ffd25e; text-shadow: 0 0 12px rgba(255,210,94,.45);
       text-transform: uppercase; margin-top: 4px;
     }
     #lbNameSubtext {
-      /* Marcellus, NOT Cinzel: Cinzel has no true lowercase (its a-z glyphs
+      /* Domine, NOT Cinzel: Cinzel has no true lowercase (its a-z glyphs
          are small capitals by design), so it always reads as ALL CAPS — the
-         exact complaint about this line. Marcellus is the game's serif with
+         exact complaint about this line. Domine is the game's serif with
          real lowercase (same as the splash intro copy), so the sentence
          finally reads as a sentence. */
-      font-family: "Marcellus", serif;
+      font-family: "Domine", serif;
       font-size: 14px; font-weight: 500; letter-spacing: .3px;
       color: rgba(255,255,255,.72); margin-top: -6px;
     }
@@ -1748,7 +1748,7 @@
        the hide */
     #duelCard.hiddenMsg { display: none; }
     #duelResult {
-      font-family: "Marcellus", serif;
+      font-family: "Domine", serif;
       font-size: clamp(16px, 3vw, 22px); font-weight: 900; letter-spacing: 1px;
       color: #ffd25e; text-align: center; text-shadow: 0 0 14px rgba(255,210,94,.4);
       display: flex; align-items: center; justify-content: center; gap: 12px;
