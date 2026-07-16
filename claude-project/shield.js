@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { MENU_INPUT, initMenuInput, autoDrift } from './menuInput.js';
-import { glDiagCtx, glDiagWatch } from './glDiag.js';
+import { glDiagCtx, glDiagWatch, IS_IOS_WEBKIT } from './glDiag.js';
 
 // WebGL shader shield for the splash screen — same treatment as the logo:
 // shared pointer/tilt parallax (true 3D tilt via CSS perspective), travelling
@@ -20,6 +20,11 @@ export function createShieldFX() {
   };
   const imgEl = document.getElementById('logoShield');
   if (!imgEl) return api;
+  // iOS: never claim a WebGL context for shine effects — creating a second
+  // context correlates exactly with the main canvas's output dying to black
+  // on iPhone 16 Pro (see the static-image branch in logo.js). The plain
+  // <img> (already in the DOM) simply stays as-is.
+  if (IS_IOS_WEBKIT) return api;
 
   let wrap = null;
   try {

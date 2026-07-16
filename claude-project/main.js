@@ -10,7 +10,7 @@ import { createSky, createFjord, createClouds, createCourse, disposeCourse, upda
 import { initAudio, oarSplash, ding, thud, whistle, crowd, kick, hat, bass, whoosh, donk, roVoice, fireworkBoom, setSfxMuted, isSfxMuted, setMusicMuted, isMusicMuted, setMusicDucked, setSeagullScene, hoverSparkle, hornSound, isMusicLoadSettled } from './audio.js';
 import { createLogoFX, createHowtoFX, createVoyageDoneFX } from './logo.js';
 import { createShieldFX } from './shield.js';
-import { glDiag, glDiagCtx, glDiagWatch, glDiagNote } from './glDiag.js';
+import { glDiag, glDiagCtx, glDiagWatch, glDiagNote, IS_IOS_WEBKIT } from './glDiag.js';
 import {
   loadVoyage, creditRun, creditBonus, VOYAGE_OUT_M, TOTAL_VOYAGE_M, VOYAGE_STAGES, currentStage,
   getOrCreateVoyageId, loadStageBests, isStageBest, recordStageBest, markStageSubmitted,
@@ -156,18 +156,15 @@ const renderer = new THREE.WebGLRenderer({ antialias: false, powerPreference: 'h
 const IS_MOBILE_GPU = window.matchMedia('(pointer: coarse)').matches
   || navigator.maxTouchPoints > 0
   || 'ontouchstart' in window;
-// iOS/iPadOS specifically (every iOS browser is WebKit, incl. Chrome-on-iOS).
-// iPadOS 13+ masquerades as "MacIntel" desktop — the maxTouchPoints check
-// catches it. Used to scope the composer fallback probe below: only iOS
-// gets AUTO-degraded on a bad framebuffer probe, because (a) it's the
-// platform with the actual blank-canvas bug, (b) WebKit/Metal reports FBO
+// IS_IOS_WEBKIT (imported from glDiag.js, shared with logo.js/shield.js):
+// scopes the composer fallback probe + paint watchdog below — only iOS gets
+// AUTO-degraded on a bad framebuffer probe / black output, because (a) it's
+// the platform with the actual blank-canvas bug, (b) WebKit/Metal reports FBO
 // completeness truthfully there, while some desktop/virtualized GL stacks
 // report "incomplete" for pipelines that render perfectly (verified in dev:
 // a working setup reporting 36054 + GL error 1286 on every frame), and (c)
 // a wrong trip on iOS costs slight bloom precision at phone DPR, while a
 // wrong trip on desktop would silently strip MSAA from healthy machines.
-const IS_IOS_WEBKIT = /iP(hone|ad|od)/.test(navigator.userAgent)
-  || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
 const PIXEL_RATIO = Math.min(window.devicePixelRatio, IS_MOBILE_GPU ? 1.5 : 2);
 renderer.setPixelRatio(PIXEL_RATIO);
 renderer.setSize(window.innerWidth, window.innerHeight);
@@ -5130,6 +5127,7 @@ function update(dt, realDt = dt) {
 // immediately, not 500ms later when the class itself is stripped.
 const MENU_RENDER_INTERVAL = 1 / 30; // seconds
 let menuRenderAcc = 0;
+let lastPixelSampleT = 0; // wall-clock gate for the paint-proof sampling in frameInner()
 // Guarded wrapper: an uncaught throw inside the rAF callback KILLS three's
 // setAnimationLoop silently — on-device that reads as "the world never
 // appears" with no console to check. That's exactly the iPhone 16 Pro
@@ -5180,15 +5178,21 @@ function frameInner(maxDt) {
   if (composerBypassed) renderer.render(scene, camera);
   else composer.render();
   if (!glDiag.boot.firstLoopRender) glDiag.boot.firstLoopRender = Math.round(performance.now());
-  // paint-proof sampling (~once/sec): read two pixels right after the
-  // render, in the SAME task — valid without preserveDrawingBuffer. Centre
-  // + an upper "sky" point (the sky/fog gradient is never pure black in any
-  // game state). Runs behind ?dev=roway2026 (overlay evidence) AND always
-  // on iOS, where it feeds the persistent paint watchdog below — the
-  // iPhone 16 Pro's output provably dies to black mid-session while every
-  // GL status check stays green, so real output pixels are the only signal
-  // that catches it. Cost: two 1px readbacks ~every 60th frame.
-  if ((DEV_TOOLS || IS_IOS_WEBKIT) && glDiag.frames % 60 === 0) {
+  // paint-proof sampling (once/sec, WALL-CLOCK): read two pixels right after
+  // the render, in the SAME task — valid without preserveDrawingBuffer.
+  // Centre + an upper "sky" point (the sky/fog gradient is never pure black
+  // in any game state). Runs behind ?dev=roway2026 (overlay evidence) AND
+  // always on iOS, where it feeds the persistent paint watchdog below — the
+  // iPhone 16 Pro's output provably dies to black mid-session while every GL
+  // status check stays green, so real output pixels are the only signal that
+  // catches it. Time-based, NOT frames%N: on the menu the 30fps render
+  // throttle above returns early on most frames, so a frame-count gate only
+  // samples when N%60===0 happens to coincide with a rendered frame — on the
+  // field (iPhone 16 Pro panel) that starved the watchdog for 500+ frames
+  // and stalled its repair ladder after step 1. Any rendered frame ≥1s after
+  // the previous sample now qualifies. Cost: two 1px readbacks per second.
+  if ((DEV_TOOLS || IS_IOS_WEBKIT) && now - lastPixelSampleT >= 1000) {
+    lastPixelSampleT = now;
     try {
       const gl = renderer.getContext();
       const w = gl.drawingBufferWidth, h = gl.drawingBufferHeight;
@@ -5274,8 +5278,8 @@ setTimeout(() => {
 // menu/how-to/race start, and self-heals ~10s into racing — exactly when
 // Safari's URL bar collapse fires a real resize, which reallocates every
 // GPU buffer. So the watchdog runs FOREVER (2 consecutive all-black samples
-// ≈2s apart trigger one repair step) and the ladder starts with exactly
-// that proven remedy:
+// ≈1s apart trigger the first repair step, then every further black sample
+// escalates one rung) and the ladder starts with exactly that proven remedy:
 //   1. realloc kick — renderer.setSize() re-creates the drawing buffer and
 //      the composer targets are rebuilt fresh, KEEPING full visual quality
 //      (this is the same repair the accidental resize performs);
@@ -5293,7 +5297,13 @@ function iosPaintWatchdog(mid, sky) {
     return;
   }
   iosBlackStreak++;
-  if (iosBlackStreak < 2) return; // one black sample can be coincidence; two ≈2s apart cannot
+  // First action needs 2 consecutive black samples (one can be a coincidence —
+  // the field panel showed exactly that: a single-sample black blink mid-intro
+  // that recovered on its own). But once a repair step has been TAKEN and the
+  // next ~1s-later sample is still black, blackness is confirmed persistent —
+  // escalate on every further black sample so the ladder reaches the working
+  // configuration in ~3-4s total instead of ~2s per rung.
+  if (iosBlackStreak < (iosRepairStep === 0 ? 2 : 1)) return;
   iosBlackStreak = 0;
   iosRepairStep++;
   if (iosRepairStep === 1) {

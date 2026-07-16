@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { MENU_INPUT, initMenuInput, autoDrift } from './menuInput.js';
-import { glDiagCtx, glDiagWatch } from './glDiag.js';
+import { glDiagCtx, glDiagWatch, IS_IOS_WEBKIT } from './glDiag.js';
 
 // Shared "premium key-art" FX: a tiny dedicated WebGL renderer that draws an
 // image on a full-quad plane with a travelling diagonal shine, plus a shared
@@ -23,6 +23,36 @@ function mountShineFX(anchorEl, opts) {
   let canvas = null;
   try {
     if (new URLSearchParams(location.search).has('nologo')) throw new Error('forced fallback (?nologo)');
+
+    // ---- iOS: STATIC IMAGE, no WebGL at all ----
+    // Field evidence from the iPhone 16 Pro (?dev overlay): the MAIN canvas's
+    // output dies to permanent black at almost exactly the moment this shine
+    // context is created at splash reveal (logoCanvas@14868ms vs black onset
+    // ~13-15s) — creating a SECOND WebGL context appears to corrupt the game
+    // composer's render targets on iOS 18 WebKit (no contextlost fires, all
+    // GL status stays green, output just goes black). So on iOS the shine
+    // never touches WebGL: a plain <img> with the same id (same CSS rules,
+    // same 'in' reveal transition) shows the identical key art — only the
+    // moving glint + pointer tilt are dropped, on iOS only.
+    if (IS_IOS_WEBKIT) {
+      const el = document.createElement('img');
+      el.id = opts.canvasId || 'shineCanvas';
+      if (opts.canvasClass) el.className = opts.canvasClass;
+      el.src = opts.src;
+      el.decoding = 'async';
+      if (opts.initAspect) el.style.aspectRatio = opts.initAspect;
+      el.onerror = () => { // PNG missing → plain-DOM anchor back on
+        if (el.parentNode) el.parentNode.removeChild(el);
+        anchorEl.classList.remove(opts.hideClass || 'logoHidden');
+      };
+      anchorEl.parentNode.insertBefore(el, anchorEl);
+      anchorEl.classList.add(opts.hideClass || 'logoHidden');
+      api.ok = true;
+      api.reveal = () => el.classList.add('in');
+      api.reset = () => el.classList.remove('in');
+      api.resize = () => {};
+      return api;
+    }
 
     // ---- canvas-texture source: optional procedural fallback content first,
     // then overridden by the real PNG once it decodes ----

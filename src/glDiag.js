@@ -41,6 +41,13 @@ window.addEventListener('unhandledrejection', (e) => {
 
 const now = () => Math.round(performance.now());
 
+// iOS/iPadOS (every iOS browser is WebKit, incl. Chrome-on-iOS). iPadOS 13+
+// masquerades as "MacIntel" desktop — the maxTouchPoints check catches it.
+// Shared here because main.js (composer fallbacks + paint watchdog) AND
+// logo.js/shield.js (static-image mode, see below) all branch on it.
+export const IS_IOS_WEBKIT = /iP(hone|ad|od)/.test(navigator.userAgent)
+  || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+
 export function glDiagCtx(id) {
   glDiag.ctx.push({ id, t: now() });
 }
