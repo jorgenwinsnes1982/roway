@@ -731,7 +731,10 @@
     .screen {
       position: absolute; inset: 0; display: flex; flex-direction: column;
       align-items: center; justify-content: center; gap: 14px;
-      overflow-y: auto; padding-top: 30px; padding-bottom: 30px;
+      /* overflow-y:auto alone makes overflow-x compute to auto as well — any
+         child poking even 1px past the edge (the tilted logo canvas does)
+         then turns into a horizontal pan/sidescroll on iOS. Never allow it. */
+      overflow-y: auto; overflow-x: hidden; padding-top: 30px; padding-bottom: 30px;
       background: rgba(0, 0, 0, .8);
       pointer-events: auto; text-align: center; padding: 20px;
       transition: opacity .5s, visibility .5s;
@@ -765,10 +768,15 @@
       opacity: 1;
       transform: translateY(0) scale(1);
     }
-    /* mobile splash logo, 15% larger — the 630px cap never engages this small,
-       so bumping the vw side is what actually grows it here */
+    /* mobile splash logo: the old +15% boost (87vw*1.15 ≈ 100vw) both poked
+       past the viewport edges once the 3D tilt transform kicked in (→ iOS
+       sidescroll) and ate the vertical room the four button rows need on
+       iPhone-12-class screens. Slightly under full width now, and capped
+       against viewport HEIGHT too, so a short viewport (Safari with bars
+       showing) gets a proportionally smaller logo instead of a scrolling,
+       colliding splash. 40vh × the 1448/1086 aspect ≈ 30vh of logo height. */
     @media (max-width: 640px) {
-      #logoCanvas { width: min(calc(87vw * 1.15), 630px); }
+      #logoCanvas { width: min(87vw, 40vh, 630px); }
     }
     .title.logoHidden { display: none; }
     /* how-to hero gets the same WebGL shine/tilt canvas as the splash logo.
@@ -2107,6 +2115,30 @@
       }
       .narrowHide { display: none; }
       .narrowShow { display: inline; }
+      /* Small phones: splash/how-to/result must fit WITHOUT scroll or element
+         collisions (hard rule). Tighter column rhythm — the .screen gap, the
+         pre-button margin and the stack gap together free ~40px, which with
+         the height-capped #logoCanvas above keeps all four splash button rows
+         + the credit line inside even a bars-visible iPhone 12 viewport. */
+      .screen { gap: 10px; }
+      #howtoScreen .introText, #startScreen .introText { margin-bottom: 6px; }
+      .menuBtns { gap: 10px; }
+      .menuBtns--stack { gap: 8px; }
+      .raster-btn { margin-top: 4px; }
+      /* how-to hero art: same height-cap treatment as the splash logo, so the
+         demo bar + copy + buttons below never get pushed into a scroll */
+      #howtoLogoCanvas, .howtoTitleImg { width: min(304px, 57.6vw, 34vh); }
+      /* result card: the shield badge is pure decor and its 96px is exactly
+         the margin the buttons need on a short viewport — drop it on mobile */
+      #resultShield { display: none; }
+      /* result stage 2 (post-claim: banner + card + Row again + Challenge +
+         leaderboard preview + View full) is the tallest state of the screen —
+         measured 708px of column on a bars-visible iPhone 12 (664px). Slim
+         the three biggest line items so the whole state fits with margin:
+         banner one size-step down, tighter card padding, shorter lb preview. */
+      #placeBanner { font-size: clamp(34px, 7.5vw, 84px); margin-top: 0; }
+      #resultCard { padding: 20px 22px 16px; margin-top: 2px; }
+      #lbResultWrap { max-height: 88px; overflow: hidden; }
     }
   </style>
 </head>
