@@ -544,6 +544,28 @@
       text-transform: uppercase; color: #ffd25e;
       text-shadow: 0 0 10px rgba(255, 210, 94, .35);
     }
+    /* credit/contact block at the foot of the About text — set apart from
+       the story above with a thin rule, same gold tint as the modal frame */
+    .aboutByline {
+      margin-top: 22px; padding-top: 18px;
+      border-top: 1px solid rgba(185, 138, 62, .28);
+      font-size: 14.5px; line-height: 1.6; color: rgba(255, 255, 255, .72);
+    }
+    .aboutByline strong { color: #fff; font-weight: 700; }
+    .aboutByline a {
+      color: rgba(255, 255, 255, .85); text-decoration: underline;
+      text-underline-offset: 2px; transition: color .15s ease;
+    }
+    .aboutByline a:hover { color: #ffd25e; }
+    .aboutContact { margin-top: 10px; }
+    /* the tagline started as a short 3-word punchline (aboutSign's uppercase
+       + letter-spacing was tuned for that); a full sentence in the same
+       treatment reads as shouting across 4 lines, so a long one drops caps
+       and tracking while keeping the gold "this is the point" emphasis */
+    .aboutSignLong {
+      text-transform: none; letter-spacing: .2px; font-weight: 700;
+      font-family: "Marcellus", serif;
+    }
     /* "Main menu" set apart at the bottom, below the two paired in-race
        choices — a quieter exit action, not a third equal-weight button.
        The margin has to live on the .raster-btn WRAPPER, not this button:
@@ -2241,20 +2263,31 @@
         <div class="confirmTitle">About the game</div>
         <div class="aboutBody">
           <p class="aboutLede">ROWAY</p>
-          <p>Jeg utfordret meg selv til å gjøre Norges VM-ferd om til et morsomt spill om å ro.</p>
-          <p>Navnet kom fra NORWAY.</p>
-          <p>Jeg byttet ut «NOR» med «ROW».</p>
-          <p>Resultatet ble ROWAY.</p>
-          <p>Et norsk vikingskip. Fem etapper. Elleve spillere, en trommeslager og Mr. Row Row som leder ferden.</p>
-          <p>Oppdraget:</p>
-          <p>Ro til USA. Hent VM-trofeet. Ta det hjem til Ullevaal og fedrelandet.</p>
-          <p>Den største utfordringen var å gjøre selve roingen enkel, rytmisk og morsom – og få et helt 3D-mannskap til å bevege seg i takt med spillet.</p>
-          <p>Jeg har laget idé, konsept, spilldesign, art direction og brukeropplevelse selv.</p>
-          <p>ChatGPT, Meshy, Cursor, Claude Code, Three.js og egne AI-agenter har vært produksjonsteamet mitt.</p>
-          <p>Det ble ikke perfekt.</p>
-          <p>Det var heller aldri poenget.</p>
-          <p>Poenget var å se hvor langt én person kunne ta én idé på ti kvelder.</p>
-          <p class="aboutSign">AI produserer. Håndverket avgjør.</p>
+          <p>The idea came after the Norway–Brazil match.</p>
+          <p>Suddenly, it felt like Norway could achieve the impossible. At the same time, the entire World Cup journey could be over in the next match.</p>
+          <p>That was when I thought:</p>
+          <p>We're bringing the trophy home anyway.</p>
+          <p>With Norway's simplest chant:</p>
+          <p><strong>RO!</strong></p>
+          <p>I replaced "NOR" in NORWAY with "RO".</p>
+          <p>The result was ROWAY.</p>
+          <p>I then gave myself a ten-day AI challenge: How far could I take one original idea, working only in the evenings?</p>
+          <p>I chose to build a game around rowing—a mechanic with few clear references or established formulas. I had to design a controller that made every stroke feel simple, rhythmic and satisfying:</p>
+          <p>Build up power.<br>Release at the right moment.<br>Get the entire crew rowing in sync.</p>
+          <p>The mission: Row to the USA. Bring the World Cup trophy home to Ullevaal.</p>
+          <p>I created the concept, game mechanics, design, art direction and user experience. AI tools and custom agents became my multidisciplinary production team—helping with code, 3D, animation, audio, testing and performance optimization.</p>
+          <p>Every visual was AI-generated, then selected, corrected and refined into one consistent Viking-inspired world.</p>
+          <p>The tools produced the material. I made the decisions.</p>
+          <p>ROWAY was created by one person in roughly ten evenings.</p>
+          <p class="aboutSign aboutSignLong">AI can produce. But someone still has to find the idea, set the direction and make everything work together.</p>
+          <div class="aboutByline">
+            <p><strong>Designed and developed by Jørgen Winsnes</strong></p>
+            <p>Design Director — Brand, Product &amp; Experience<br>Winsen AS</p>
+            <p class="aboutContact">Questions or interested in working together?<br>
+              <a href="mailto:jorgen@winsen.no">jorgen@winsen.no</a><br>
+              <a href="tel:+4792883928">+47 928 83 928</a>
+            </p>
+          </div>
         </div>
       </div>
     </div>
