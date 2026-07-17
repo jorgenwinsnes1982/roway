@@ -2548,13 +2548,14 @@
       <div class="introText">
         Go for the fastest time in Time Attack –<br>or take on Story Mode and row the World Cup trophy all the way home.
       </div>
-      <!-- Fase 3b: two modes — Kapproing (today's daily race + leaderboard) and
-           Reisen (the ongoing voyage; no leaderboard, focused on the journey).
-           Renamed to Time Attack / Story Mode for players — IDs and every
-           mode-branch in main.js (G.gameMode === 'kapp'/'voyage') are untouched. -->
+      <!-- Fase 3b: two modes — Reisen (the ongoing voyage; main gameplay, no
+           leaderboard, focused on the journey) and Kapproing (today's daily
+           race + leaderboard). Renamed to Story Mode / Time Attack for players
+           — IDs and every mode-branch in main.js (G.gameMode === 'kapp'/'voyage')
+           are untouched. Story Mode is the primary CTA. -->
       <div class="menuBtns menuBtns--stack">
-        <button class="cta ctaSecondary" id="startBtn">Time Attack</button>
         <button class="cta" id="startVoyageBtn">Story Mode</button>
+        <button class="cta ctaSecondary" id="startBtn">Time Attack</button>
       </div>
       <div class="menuBtns">
         <button class="ctaGhost" id="lbBtn">Leaderboard</button>
