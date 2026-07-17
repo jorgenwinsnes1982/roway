@@ -437,11 +437,12 @@ function applyQuality(level) {
   const useShadows = !IS_MOBILE_GPU && level !== 'low';
   renderer.shadowMap.enabled = useShadows;
   sun.castShadow = useShadows;
-  setShipShadows(ship, useShadows);
-  setShipShadows(rival, useShadows);
-  setFjordShadows(fjord, useShadows);
-  // course is created later; apply flags when it exists, and let
-  // ensureCourseForMode() set them on every rebuild.
+  // These objects are created AFTER the initial applyQuality() call at boot,
+  // so guard against undefined. Their initial shadow flags are set right
+  // after each one is instantiated; here we only update on quality changes.
+  if (ship) setShipShadows(ship, useShadows);
+  if (rival) setShipShadows(rival, useShadows);
+  if (fjord) setFjordShadows(fjord, useShadows);
   if (course) setCourseShadows(course, useShadows);
   // baseline is whichever WATER_PRESETS entry createWater() already picked
   // (see water.js) — LOW shaves further off that same baseline instead of
