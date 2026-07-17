@@ -439,8 +439,10 @@ function applyQuality(level) {
   sun.castShadow = useShadows;
   setShipShadows(ship, useShadows);
   setShipShadows(rival, useShadows);
-  setCourseShadows(course, useShadows);
   setFjordShadows(fjord, useShadows);
+  // course is created later; apply flags when it exists, and let
+  // ensureCourseForMode() set them on every rebuild.
+  if (course) setCourseShadows(course, useShadows);
   // baseline is whichever WATER_PRESETS entry createWater() already picked
   // (see water.js) — LOW shaves further off that same baseline instead of
   // hardcoding its own separate number that could drift out of sync with it.
