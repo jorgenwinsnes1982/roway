@@ -183,11 +183,23 @@ app.appendChild(renderer.domElement);
 // three.js's WebGLRenderer already preventDefault()s webglcontextlost
 // internally (that's what permits restoration) and re-initializes GL state on
 // webglcontextrestored — the handlers here add evidence + kick a re-render.
+// Dev-mode boot/lifecycle event log — exact marker names so on-device QA can
+// grep a console capture for the boot sequence: asset-ready, compile-start,
+// compile-end, first-render-start, first-render-end, intro-hidden,
+// context-lost, context-restored. `function` (not const) so it's usable from
+// anywhere in this module regardless of declaration order (hoisted). No-ops
+// entirely outside DEV_TOOLS — never runs in production.
+function bootLog(evt, extra) {
+  if (!DEV_TOOLS) return;
+  console.debug(`[boot] ${evt} @${Math.round(performance.now())}ms`, extra || '');
+}
+
 glDiagCtx('main');
 glDiagWatch(renderer.domElement, 'main', {
-  onLost: () => glDiagNote('MAIN context lost'),
+  onLost: () => { glDiagNote('MAIN context lost'); bootLog('context-lost'); },
   onRestored: () => {
     glDiagNote('main context restored — re-rendering');
+    bootLog('context-restored');
     // three has re-initialized its GL state by now; textures/targets
     // re-upload lazily on the next render, so kick one immediately instead
     // of waiting for the loop (which may be render-throttled on a menu).
@@ -373,6 +385,66 @@ const sky = createSky();
 scene.add(sky);
 const water = createWater({ sunDir, fogColor: FOG_COLOR, fogNear: 320, fogFar: 1150, mobile: IS_MOBILE_GPU });
 scene.add(water.mesh);
+
+// ================= Quality tiers (LOW / MEDIUM / HIGH) =================
+// Deliberately narrow scope: these knobs are all CHEAP to flip mid-session
+// (Pass.enabled flags EffectComposer already checks per-pass, and a water
+// uniform write) — never pixel ratio or render-target SIZE. Reallocating
+// render targets was itself one of the causes behind the iPhone 16 Pro
+// blank-canvas investigation above (composerSafeMode/rebuildComposerSafe),
+// so quality changes made DURING a session must never repeat that class of
+// operation; pixel ratio is decided once at boot (PIXEL_RATIO, above) and
+// left alone. MEDIUM is intentionally identical to what this project already
+// shipped before this pass (bloom + finish pass on, water detail 0.75
+// mobile/1.0 desktop) — introducing tiers must not change the default look.
+//
+// Initial pick avoids user-agent sniffing per se — it uses real capability
+// signals (navigator.deviceMemory / hardwareConcurrency, where available;
+// both undefined on iOS Safari, which then just falls back to the existing
+// IS_MOBILE_GPU-only mobile default of MEDIUM, matching current behaviour
+// exactly on the very platform this project has tuned hardest for).
+const LOW_END_SIGNAL = IS_MOBILE_GPU && (
+  (navigator.deviceMemory != null && navigator.deviceMemory <= 3)
+  || (navigator.hardwareConcurrency != null && navigator.hardwareConcurrency <= 4)
+);
+let quality = !IS_MOBILE_GPU ? 'high' : (LOW_END_SIGNAL ? 'low' : 'medium');
+function applyQuality(level) {
+  quality = level;
+  const low = level === 'low';
+  bloomPass.enabled = !low;
+  finishPass.enabled = !low;
+  water.params.detail = low ? 0.4 : (IS_MOBILE_GPU ? 0.75 : 1.0);
+  glDiagNote(`quality -> ${level}`);
+}
+applyQuality(quality);
+
+// ---- adaptive quality: DOWNGRADE-ONLY, hysteresis + cooldown ----
+// One-directional on purpose: silently regressing back up mid-race risks a
+// visible quality pop the player didn't ask for, and — unlike a downgrade —
+// there is no physical-device measurement backing a safe moment to do it.
+// Rolling 3s windows; a window only counts against the tier if over a third
+// of its frames ran slower than 40ms (<25fps), and a successful downgrade
+// then blocks any further change for 8s so one bad window can't cascade
+// straight to LOW. Skipped entirely once already on LOW (nothing left to
+// shed) or once the composer is bypassed (iOS FBO-failure path — no passes
+// left to toggle) or before the boot pre-warm has finished (first seconds
+// are compile/scene-build noise, not steady-state frame cost).
+let qWinStart = 0, qWinFrames = 0, qWinSlow = 0, qLastChangeT = 0;
+const Q_WINDOW_MS = 3000, Q_SLOW_MS = 40, Q_SLOW_RATIO = 0.34, Q_COOLDOWN_MS = 8000;
+function sampleAdaptiveQuality(now, frameMs) {
+  if (composerBypassed || quality === 'low' || !glDiag.boot.prewarmDone) return;
+  if (qWinStart === 0) qWinStart = now;
+  qWinFrames++;
+  if (frameMs > Q_SLOW_MS) qWinSlow++;
+  if (now - qWinStart < Q_WINDOW_MS) return;
+  const slowRatio = qWinFrames ? qWinSlow / qWinFrames : 0;
+  if (slowRatio > Q_SLOW_RATIO && now - qLastChangeT > Q_COOLDOWN_MS) {
+    applyQuality(quality === 'high' ? 'medium' : 'low');
+    qLastChangeT = now;
+  }
+  qWinStart = now; qWinFrames = 0; qWinSlow = 0;
+}
+
 const fjord = createFjord(); // kept — stage moods tint its materials live
 scene.add(fjord);
 scene.add(createClouds());
@@ -1534,7 +1606,7 @@ if (hud.zone) hud.zone.setAttribute('cx', OAR_X0 + ((zoneLoVis + zoneHiVis) / 2)
 // exactly on the glowing groove — see ROWBAR_IMG_* calibration below.
 const rowbarImg = new Image();
 let rowbarLoaded = false;
-rowbarImg.onload = () => { rowbarLoaded = true; };
+rowbarImg.onload = () => { rowbarLoaded = true; bootLog('asset-ready', { asset: 'rowbar.png' }); };
 rowbarImg.src = '/buttons/rowbar.png';
 // Pixel coords (in the source PNG) of the left/right cap's track midpoint —
 // measured by sampling the image's alpha channel. Used to scale+place the
@@ -1957,9 +2029,21 @@ function stepPreload(dt) {
         PRELOAD.musicWaitT += dt;
         return;
       }
+      // Hard gate, not a fixed timeout: never reveal the 3D world before the
+      // shader pre-warm has actually compiled AND rendered a real frame (see
+      // the compileAsync sequence + bootReady near renderer.setAnimationLoop
+      // above) — this is the evidence-based guarantee the animation's own
+      // fixed hold only ever approximated. Reuses the SAME bounded counter as
+      // the music gate just above (capped at MUSIC_WAIT_CAP overall) so a
+      // pathological compile stall still can't strand the player forever.
+      if (!bootReady && PRELOAD.musicWaitT < PRELOAD.MUSIC_WAIT_CAP) {
+        PRELOAD.musicWaitT += dt;
+        return;
+      }
       PRELOAD.active = false;
       if (hud.preloaderScreen) hud.preloaderScreen.classList.add('hidden');
       glDiag.boot.preloaderHidden = Math.round(performance.now()); // proves this path ran (?dev overlay)
+      bootLog('intro-hidden');
       showWinsenIntroCard();
     }
   }
@@ -5389,6 +5473,10 @@ function frameInner(maxDt) {
   // underneath the whole time.
   const realDt = Math.min(rawDtSec, 0.5);
   lastFrameT = now;
+  // adaptive quality sampling: skip a frame whose raw delta is itself a big
+  // stall (tab resume, a one-off GC pause) — that's not steady-state render
+  // cost and would corrupt the window's slow-frame ratio on a single sample
+  if (rawDtSec < 0.5) sampleAdaptiveQuality(now, rawDtSec * 1000);
   if (!G.paused) update(dt, realDt); // paused: world freezes but keeps rendering
   const resultUp = hud.resultScreen && !hud.resultScreen.classList.contains('hidden');
   const howtoModalUp = hud.howtoScreen && hud.howtoScreen.classList.contains('howtoModal') && !hud.howtoScreen.classList.contains('hidden');
@@ -5435,6 +5523,11 @@ function frameInner(maxDt) {
   }
 }
 renderer.setAnimationLoop(() => frame());
+// bootReady: the hard, evidence-based gate stepPreload() waits on before it's
+// allowed to hide the intro (see the PRELOAD.active transition below) — flips
+// true only once compile + a real rendered frame + one further rAF boundary
+// have all actually happened, never off a fixed timer alone.
+let bootReady = false;
 // Shader pre-warm: compile every scene material and warm the post-processing
 // passes (bloom + output) once up front, so the first visible frame doesn't
 // hitch while programs compile lazily (18 -> 26). Deferred via setTimeout so
@@ -5449,11 +5542,33 @@ renderer.setAnimationLoop(() => frame());
 // window. It still runs comfortably before the cinematic reveal, so the
 // original goal (no visible hitch once the player can actually see the
 // canvas) is preserved.
-setTimeout(() => {
+//
+// compileAsync (where the three build supports it) lets the driver compile
+// shader programs off the main thread / spread across frames instead of one
+// long synchronous stall; sync renderer.compile() is the fallback for any
+// build that doesn't expose it. Either way this is followed by an actual
+// render (first-render-start/-end) and one more queued rAF tick before
+// bootReady flips — see PRIORITET items 4-5 in the approved plan.
+setTimeout(async () => {
   glDiag.boot.prewarmStart = Math.round(performance.now());
-  renderer.compile(scene, camera);
+  bootLog('compile-start');
+  try {
+    if (typeof renderer.compileAsync === 'function') {
+      await renderer.compileAsync(scene, camera);
+    } else {
+      renderer.compile(scene, camera);
+    }
+  } catch (e) {
+    glDiagNote(`compileAsync failed, falling back to sync compile: ${e && e.message}`);
+    renderer.compile(scene, camera);
+  }
   glDiag.boot.compileDone = Math.round(performance.now());
+  bootLog('compile-end');
+
+  bootLog('first-render-start');
   composer.render();
+  glDiag.boot.prewarmDone = Math.round(performance.now());
+  bootLog('first-render-end');
   // Evidence, all platforms (informational only — the error queue is too
   // noisy to act on: a fully WORKING desktop/virtualized GL stack was
   // observed reporting 1286 + "framebuffer incomplete" on every frame while
@@ -5473,7 +5588,11 @@ setTimeout(() => {
     composerBypassed = true;
     glDiagNote('iOS: safe framebuffer incomplete at boot — bypassing composer (direct render)');
   }
-  glDiag.boot.prewarmDone = Math.round(performance.now());
+  // one controlled frame boundary: let the already-running rAF loop paint at
+  // least once more with the now-fully-warmed pipeline (and any composer
+  // fallback just applied above) before the intro is allowed to reveal it —
+  // never an arbitrary wait, exactly one queued animation frame.
+  requestAnimationFrame(() => { bootReady = true; });
 }, 0);
 
 // ---- iOS paint-correctness probe (the decisive iPhone 16 Pro evidence) ----
@@ -5568,7 +5687,15 @@ function iosPaintWatchdog(mid, sky) {
 // stepping via a timer so it never freezes mid-countdown or mid-race.
 // Larger dt cap here so throttled timers still make reasonable progress;
 // 0.1 s steps stay well below collision radii even at top speed.
+// document.hidden guard: unlike rAF (which browsers already pause while a
+// tab is hidden — the exact "pause heavy systems when hidden" behaviour for
+// the main loop, for free), a plain setInterval keeps firing in the
+// background. Without this it was the one thing STILL doing a full
+// composer.render() roughly once a second while backgrounded — real,
+// if small, wasted GPU/battery work. visibilitychange doesn't need its own
+// listener here since this check just runs on the timer's existing tick.
 setInterval(() => {
+  if (document.hidden) return;
   if (performance.now() - lastFrameT > 200) frame(0.1);
 }, 100);
 
@@ -5585,6 +5712,10 @@ if (DEV_TOOLS) {
     G, R, T, GH, C, INTRO, logoFX, shieldFX, howtoFX, renderer, ship, rival, spawnFireworkBurst,
     // live water-look tuning: __game.water.params.<name> = value (see water.js)
     water,
+    // quality tier (LOW/MEDIUM/HIGH) inspection + manual override for QA —
+    // __game.setQuality('low'|'medium'|'high'); adaptive downgrade still
+    // runs afterward unless you also freeze it (see qLastChangeT usage above)
+    get quality() { return quality; }, setQuality: applyQuality,
     // getter, not a plain ref — rebuildComposerSafe() can swap the composer
     get composer() { return composer; },
     dailySeed: DAILY_SEED, get waterT() { return waterT; },
