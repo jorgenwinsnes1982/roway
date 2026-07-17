@@ -4567,9 +4567,16 @@ function updateDrum(dt) {
     T.phase -= 1;
     T.lastRoAt = G.time; // frozen at 0 during countdown — harmless, just a generous first-stroke tempo window (rule 7)
     T.roVoiceFired = false;
-    hud.roCue.classList.remove('pop');
-    void hud.roCue.offsetWidth;
-    hud.roCue.classList.add('pop');
+    // visual RO! pop only once the race is properly underway: the countdown
+    // overlay ends with its own giant "RO!", and a tempo-cue pop landing in
+    // the same beat read as a doubled "RO! RO!" at every stage start. The
+    // drum's donks/voice metronome above is untouched — only the visual cue
+    // waits out the countdown's RO! (its tick animation runs ~1s into race).
+    if (G.mode === 'racing' && G.time > 1.1) {
+      hud.roCue.classList.remove('pop');
+      void hud.roCue.offsetWidth;
+      hud.roCue.classList.add('pop');
+    }
   }
 }
 
