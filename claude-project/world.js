@@ -1321,12 +1321,13 @@ export function createCourse(scene, seed = 424242, opts = {}) {
   // billboard.js) instead of floating clear above it
   const BANNER_Y = 0.75;
   // base plate width (billboard.js's own default) — the start pair reads
-  // 25% bigger than this, the finish pair 40% bigger, per request: bigger
-  // at the finish so the sponsor logo is more prominent right at the
-  // celebratory moment, not just a scaled-up version of the entry banner.
+  // bigger than this and the finish pair bigger still, so the sponsor logo
+  // is most prominent right at the celebratory moment. Sized up twice per
+  // request (first round ×1.25/×1.4, second round the same factors again
+  // on top): start ≈ 14.1, finish ≈ 17.6 world units wide.
   const BANNER_BASE_WIDTH = 9;
-  const BANNER_WIDTH_START = BANNER_BASE_WIDTH * 1.25;
-  const BANNER_WIDTH_FINISH = BANNER_BASE_WIDTH * 1.4;
+  const BANNER_WIDTH_START = BANNER_BASE_WIDTH * 1.25 * 1.25;
+  const BANNER_WIDTH_FINISH = BANNER_BASE_WIDTH * 1.4 * 1.4;
   const flankBanner = (centerX, halfWidth, z, side, emissive, sparkleIntensity, fresnelIntensity, width = BANNER_BASE_WIDTH) => makeBillboard({
     texture: winsenBannerTex,
     timeClock: winsenBannerClock,
