@@ -85,6 +85,15 @@ const fragmentShader = /* glsl */ `
   uniform float uFogFar;
   uniform vec4 uShipA; // player hull: x, z, heading, speed — drives hull wash
   uniform vec4 uShipB; // rival hull: same layout
+  // ---- water-look tunables (all live-adjustable via water.params.* — see
+  // createWater; defaults chosen for a cold, calm nordic fjord) ----
+  uniform float uDetail;      // global micro-ripple weight (mobile runs lower)
+  uniform float uNormalStrA;  // fine ripple-layer normal strength
+  uniform float uNormalStrB;  // coarse ripple-layer normal strength
+  uniform float uFresnelPow;  // Schlick exponent (higher = reflection only at grazing)
+  uniform float uFresnelStr;  // overall reflection weight
+  uniform float uSunStr;      // sun-glitter brightness
+  uniform float uSunSharp;    // sun-glitter tightness (higher = smaller corridor)
   varying vec3 vWorldPos;
   varying float vWaveH;
   varying vec3 vNormal;
@@ -164,20 +173,33 @@ const fragmentShader = /* glsl */ `
     vec3 V = normalize(cameraPosition - vWorldPos);
     vec3 L = normalize(uSunDir);
 
-    // micro-ripples: perturb the normal with a noise gradient for close-up detail
-    vec2 mp = vWorldPos.xz * 2.6 + uTime * 0.55;
-    float me = 0.3;
-    vec2 mg = vec2(
-      noise(mp + vec2(me, 0.0)) - noise(mp - vec2(me, 0.0)),
-      noise(mp + vec2(0.0, me)) - noise(mp - vec2(0.0, me))
-    );
-    // detail fades with distance so the horizon stays calm
-    float detail = 1.0 - smoothstep(60.0, 420.0, distance(cameraPosition, vWorldPos));
-    N = normalize(N + vec3(mg.x, 0.0, mg.y) * 0.42 * detail);
+    // micro-ripples: TWO decorrelated normal layers, much weaker than before
+    // and at larger scales (period ~1.1m / ~2.4m, not the old ~0.4m), so the
+    // surface reads as soft crinkle rather than embossed plastic. Faded at
+    // BOTH ends of the view: gone right at the camera (no high-frequency
+    // hammering underfoot) and gone toward the horizon (glassy, no moiré).
+    float dist = distance(cameraPosition, vWorldPos);
+    float detail = smoothstep(6.0, 28.0, dist) * (1.0 - smoothstep(150.0, 380.0, dist)) * uDetail;
+    // layer A: fine, drifting one way
+    vec2 pa = vWorldPos.xz * 0.9 + vec2(uTime * 0.35, uTime * 0.10);
+    // layer B: coarser, drifting the other way (breaks the single-pattern look)
+    vec2 pb = vWorldPos.xz * 0.42 + vec2(-uTime * 0.13, uTime * 0.27);
+    float me = 0.35;
+    vec2 ga = vec2(noise(pa + vec2(me, 0.0)) - noise(pa - vec2(me, 0.0)),
+                   noise(pa + vec2(0.0, me)) - noise(pa - vec2(0.0, me)));
+    vec2 gb = vec2(noise(pb + vec2(me, 0.0)) - noise(pb - vec2(me, 0.0)),
+                   noise(pb + vec2(0.0, me)) - noise(pb - vec2(0.0, me)));
+    vec2 mg = ga * uNormalStrA + gb * uNormalStrB;
+    N = normalize(N + vec3(mg.x, 0.0, mg.y) * detail);
 
     // ---- water body: deep turquoise-black -> greenish shallows ----
     float hMix = smoothstep(-0.9, 1.1, vWaveH);
     vec3 body = mix(uDeepColor, uShallowColor, hMix);
+
+    // view angle: 1 = looking straight down INTO the water, 0 = grazing.
+    // Steeper views see deeper, darker water; grazing views catch the sky.
+    float cosV = clamp(dot(N, V), 0.0, 1.0);
+    body *= mix(1.0, 0.78, cosV * cosV);   // deepen the body when looking down
 
     // subsurface glow: sunlight through the crests toward the viewer
     float sss = pow(max(dot(V, -L), 0.0), 3.5) * smoothstep(0.1, 1.1, vWaveH);
@@ -188,17 +210,18 @@ const fragmentShader = /* glsl */ `
     streak = streak * 0.5 + 0.5 * noise(vec2(vWorldPos.x * 2.3 + 7.0, vWorldPos.z * 0.09 - uTime * 0.11));
     body *= 0.94 + streak * 0.10;
 
-    // ---- Schlick fresnel with view-dependent reflection colour ----
-    float cosT = max(dot(N, V), 0.0);
-    float F = 0.02 + 0.98 * pow(1.0 - cosT, 5.0);
+    // ---- Schlick fresnel: reflection grows toward grazing angles, and is
+    // capped so a large flat area never turns into one white mirror sheet ----
+    float F = uFresnelStr * (0.02 + 0.98 * pow(1.0 - cosV, uFresnelPow));
+    F = clamp(F, 0.0, 0.55);
     vec3 R = reflect(-V, N);
     float ry = clamp(R.y, 0.0, 1.0);
-    // warm glow only where the reflected ray actually points AT the sun —
-    // a tight 3D lobe gives the classic glitter corridor, not an orange sea
-    float sunLobe = pow(max(dot(normalize(R), L), 0.0), 24.0);
-    vec3 horizonCol = mix(uFogColor, uWarmColor, sunLobe * 0.85);
+    // tight lobe where the reflected ray points AT the sun — reused below by
+    // the sun glint so the warm highlight and the reflection stay coherent
+    float sunLobe = pow(max(dot(normalize(R), L), 0.0), uSunSharp);
+    vec3 horizonCol = mix(uFogColor, uWarmColor, sunLobe * 0.7);
     vec3 reflCol = mix(horizonCol, uSkyColor, pow(ry, 0.65));
-    vec3 col = mix(body, reflCol, clamp(F, 0.0, 0.6));
+    vec3 col = mix(body, reflCol, F);
 
     // ---- foam: crest height AND geometric slope, broken up by noise ----
     float slope = 1.0 - normalize(vNormal).y;
@@ -212,21 +235,17 @@ const fragmentShader = /* glsl */ `
     float wash = hullWash(uShipA, vWorldPos.xz, uTime) + hullWash(uShipB, vWorldPos.xz, uTime);
     col = mix(col, vec3(0.90, 0.95, 0.99), clamp(wash, 0.0, 1.0) * 0.62);
 
-    // ---- sun glitter, noise-modulated so it breaks into individual sparks ----
-    vec3 H = normalize(L + V);
-    float spec = pow(max(dot(N, H), 0.0), 300.0) * 1.5;
-    spec += pow(max(dot(N, H), 0.0), 70.0) * 0.10;
-    float sparkMask = noise(vWorldPos.xz * 3.4 + uTime * 1.1);
-    spec *= 0.35 + 1.65 * smoothstep(0.55, 0.95, sparkMask);
-    col += vec3(1.0, 0.93, 0.78) * spec;
+    // ---- sun glint: ONE concentrated warm-white highlight, gated by BOTH the
+    // sun-reflection lobe AND fresnel, so it only fires where the surface is
+    // angled toward the sun at a grazing view — a glitter corridor, not the
+    // thousands of identical white pinpricks a raw pow(N·H, 300) sprayed over
+    // the whole sea. Drifting noise makes the corridor twinkle instead of
+    // reading as a solid bar; warm-white keeps colour (never pure #fff). ----
+    float glintMask = noise(vWorldPos.xz * 1.1 + uTime * 0.9);
+    float glint = sunLobe * F * (0.35 + 0.65 * smoothstep(0.4, 0.9, glintMask)) * uSunStr;
+    col += mix(uWarmColor, vec3(1.0, 0.97, 0.9), 0.55) * glint;
 
-    // moving micro-sparkle (subtle)
-    float sp = noise(vWorldPos.xz * 1.6 + uTime * 0.7);
-    sp = smoothstep(0.94, 1.0, sp) * 0.18;
-    col += vec3(sp);
-
-    // distance fog
-    float dist = distance(cameraPosition, vWorldPos);
+    // distance fog (reuses the dist computed in the micro-ripple block above)
     float fogF = smoothstep(uFogNear, uFogFar, dist);
     col = mix(col, uFogColor, fogF);
 
@@ -259,7 +278,7 @@ const _SPACING_L = 3400 / 420;
 const WATER_SEG_W = Math.round(WATER_W / _SPACING_W); // = 190 (unchanged)
 const WATER_SEG_L = Math.round(WATER_L / _SPACING_L); // = 247
 
-export function createWater({ sunDir, fogColor, fogNear, fogFar }) {
+export function createWater({ sunDir, fogColor, fogNear, fogFar, mobile = false }) {
   const geo = new THREE.PlaneGeometry(WATER_W, WATER_L, WATER_SEG_W, WATER_SEG_L);
   geo.rotateX(-Math.PI / 2);
 
@@ -280,6 +299,17 @@ export function createWater({ sunDir, fogColor, fogNear, fogFar }) {
     // until the first setShips() so no phantom wash renders at the origin
     uShipA: { value: new THREE.Vector4(1e6, 1e6, 0, 0) },
     uShipB: { value: new THREE.Vector4(1e6, 1e6, 0, 0) },
+    // ---- water-look tunables (see fragment shader). Mobile drops the global
+    // micro-detail weight a notch so the horizon stays clean on lower-density
+    // buffers; every other value is identical across devices. All exposed via
+    // the returned `params` API for live tuning from the dev console. ----
+    uDetail: { value: mobile ? 0.75 : 1.0 },
+    uNormalStrA: { value: 0.11 },
+    uNormalStrB: { value: 0.07 },
+    uFresnelPow: { value: 5.0 },
+    uFresnelStr: { value: 0.72 },
+    uSunStr: { value: 0.85 },
+    uSunSharp: { value: 60.0 },
   };
   _waveScaleUniform = uniforms.uWaveScale; // setWaveScale() drives GPU+CPU from here on
 
@@ -313,6 +343,25 @@ export function createWater({ sunDir, fogColor, fogNear, fogFar }) {
       sky: uniforms.uSkyColor.value,
       warm: uniforms.uWarmColor.value,
       fog: uniforms.uFogColor.value,
+    },
+    // live water-look tuning (exposed via window.__game.water.params under
+    // DEV_TOOLS — see main.js). Setting any of these updates the uniform in
+    // place, no recompile: e.g. __game.water.params.normalStrA = 0.05
+    params: {
+      get detail() { return uniforms.uDetail.value; },
+      set detail(v) { uniforms.uDetail.value = v; },
+      get normalStrA() { return uniforms.uNormalStrA.value; },
+      set normalStrA(v) { uniforms.uNormalStrA.value = v; },
+      get normalStrB() { return uniforms.uNormalStrB.value; },
+      set normalStrB(v) { uniforms.uNormalStrB.value = v; },
+      get fresnelPow() { return uniforms.uFresnelPow.value; },
+      set fresnelPow(v) { uniforms.uFresnelPow.value = v; },
+      get fresnelStr() { return uniforms.uFresnelStr.value; },
+      set fresnelStr(v) { uniforms.uFresnelStr.value = v; },
+      get sunStr() { return uniforms.uSunStr.value; },
+      set sunStr(v) { uniforms.uSunStr.value = v; },
+      get sunSharp() { return uniforms.uSunSharp.value; },
+      set sunSharp(v) { uniforms.uSunSharp.value = v; },
     },
   };
 }

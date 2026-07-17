@@ -371,7 +371,7 @@ scene.add(fillLight);
 // world
 const sky = createSky();
 scene.add(sky);
-const water = createWater({ sunDir, fogColor: FOG_COLOR, fogNear: 320, fogFar: 1150 });
+const water = createWater({ sunDir, fogColor: FOG_COLOR, fogNear: 320, fogFar: 1150, mobile: IS_MOBILE_GPU });
 scene.add(water.mesh);
 const fjord = createFjord(); // kept — stage moods tint its materials live
 scene.add(fjord);
@@ -5583,6 +5583,8 @@ setInterval(() => {
 if (DEV_TOOLS) {
   window.__game = {
     G, R, T, GH, C, INTRO, logoFX, shieldFX, howtoFX, renderer, ship, rival, spawnFireworkBurst,
+    // live water-look tuning: __game.water.params.<name> = value (see water.js)
+    water,
     // getter, not a plain ref — rebuildComposerSafe() can swap the composer
     get composer() { return composer; },
     dailySeed: DAILY_SEED, get waterT() { return waterT; },
