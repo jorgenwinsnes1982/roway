@@ -651,7 +651,7 @@
     /* credit/contact block at the foot of the About text — set apart from
        the story above with a thin rule, same gold tint as the modal frame */
     .aboutByline {
-      margin-top: 26px; padding-top: 20px; text-align: center;
+      margin-top: 26px; padding-top: 20px; text-align: left;
       border-top: 1px solid rgba(185, 138, 62, .28);
       font-size: 14.5px; line-height: 1.6; color: rgba(255, 255, 255, .72);
     }
@@ -659,30 +659,34 @@
        (public/sign.svg, 171x65, recoloured from its native lime-green to
        #ffd25e so it matches the rest of the page's gold accent instead of
        standing out as a different brand colour), the same sign-off
-       winsen.no closes its own About page with. Sized small — a compact
-       flourish above the printed title, not its own headline. */
+       winsen.no closes its own About page with. */
     .aboutSignatureImg {
-      display: block; margin: 0 auto 10px;
-      width: min(137px, 35%); height: auto;
+      display: block; margin: 0 0 10px;
+      width: min(151px, 38%); height: auto;
     }
     /* printed name directly under the cursive signature mark */
     .aboutByline .aboutName {
       font-family: "Domine", serif; font-size: 15px; font-weight: 700;
-      letter-spacing: .3px; color: #fff; margin: 0 auto 2px;
+      letter-spacing: .3px; color: #fff; margin: 0 0 2px;
     }
     /* position/title — the one thing the signature mark no longer carries
        on its own, printed cleanly underneath it. Domine (not Cinzel/caps —
-       Cinzel has no true lowercase, same reasoning as the story body
-       copy), and narrow enough to read as a caption under the signature
-       rather than stretching the full modal width. */
+       Cinzel has no true lowercase, same reasoning as the story body copy). */
     .aboutByline .aboutRole {
       font-family: "Domine", serif; font-size: 13.5px; font-weight: 500;
       letter-spacing: .2px;
       color: rgba(255, 255, 255, .65);
-      line-height: 1.7;
-      max-width: 230px; margin: 0 auto;
+      line-height: 1.5;
+      margin: 0 0 8px;
     }
     .aboutByline strong { color: #fff; font-weight: 700; }
+    .aboutByline .aboutContact {
+      margin: 0;
+    }
+    .aboutByline .aboutContactSep {
+      margin: 0 6px;
+      color: rgba(255, 255, 255, .45);
+    }
     .aboutByline a {
       color: rgba(255, 255, 255, .85); text-decoration: underline;
       text-underline-offset: 2px; transition: color .15s ease;
@@ -2435,7 +2439,7 @@
           <span>Hide ghost ship</span>
           <button class="toggle" id="toggleHideGhost" aria-label="Toggle hide ghost ship"></button>
         </div>
-        <div class="settingRow">
+        <div class="settingRow" id="resetVoyageRow" style="display:none">
           <span>Reset voyage progress</span>
           <button class="settingResetBtn" id="resetVoyageBtn">Reset</button>
         </div>
@@ -2486,9 +2490,10 @@
           <div class="aboutByline">
             <img class="aboutSignatureImg" src="/sign.svg" alt="Signed, Jørgen Winsnes">
             <p class="aboutName">Jørgen Winsnes</p>
-            <p class="aboutRole">Design Director — Brand, Product &amp; Experience<br>Winsen AS</p>
+            <p class="aboutRole">Design Director — Brand, Product &amp; Experience, Winsen AS</p>
             <p class="aboutContact">
-              <a href="mailto:jorgen@winsen.no">jorgen@winsen.no</a><br>
+              <a href="mailto:jorgen@winsen.no">jorgen@winsen.no</a>
+              <span class="aboutContactSep">·</span>
               <a href="https://winsen.no" target="_blank" rel="noopener">winsen.no</a>
             </p>
           </div>

@@ -3624,21 +3624,22 @@ function applySfx(on) {
 applyMusic(localStorage.getItem(MUSIC_KEY) !== '0');
 applySfx(localStorage.getItem(SFX_KEY) !== '0');
 
-// hide-ghost-ship (Settings): the row itself only shows up when a ghost
-// actually exists to hide — a personal-best recording (GHOST_KEY) or an
-// active challenge duel (C.active) — checked fresh every time Settings
-// opens, not cached, since either can appear/disappear between visits.
+// hide-ghost-ship (Settings): the row itself only shows up when the player
+// has a personal-best ghost recording (GHOST_KEY) — checked fresh every time
+// Settings opens, since the first run creates the ghost.
 let hideGhostPref = localStorage.getItem(HIDE_GHOST_KEY) === '1';
 function hasGhostAvailable() {
   let data;
   try { data = JSON.parse(localStorage.getItem(GHOST_KEY)); } catch { data = null; }
-  return (Array.isArray(data) && data.length > 1) || C.active;
+  return Array.isArray(data) && data.length > 1;
 }
+const resetVoyageRow = $('resetVoyageRow');
 toggleHideGhost.classList.toggle('on', hideGhostPref);
 settingsBtn.addEventListener('click', () => {
   settingsBtn.blur();
   if (G.mode === 'racing' || G.mode === 'countdown') { G.paused = true; releaseStroke(); }
   hideGhostRow.style.display = hasGhostAvailable() ? 'flex' : 'none';
+  resetVoyageRow.style.display = isStageFinal(5) ? 'flex' : 'none';
   settingsScreen.classList.remove('hidden');
 });
 function closeSettings() {
