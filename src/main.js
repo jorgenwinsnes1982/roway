@@ -3482,7 +3482,7 @@ function showSnackbar(msg, ms = 2400) {
 }
 
 function openChallengeLinkModal(url) {
-  hud.challengeLinkDesc.textContent = shareCopyText();
+  hud.challengeLinkDesc.textContent = shareCopyText(url);
   hud.challengeLinkInput.value = url;
   hud.challengeLinkBtnIcon.innerHTML = CAN_SHARE ? SHARE_ICON_SVG : COPY_ICON_SVG;
   hud.challengeLinkBtnLabel.textContent = CAN_SHARE ? 'Share' : 'Copy';
@@ -3492,59 +3492,58 @@ function closeChallengeLinkModal() {
   hud.challengeLinkScreen.classList.add('hidden');
 }
 hud.challengeLinkClose.addEventListener('click', (e) => { e.currentTarget.blur(); closeChallengeLinkModal(); });
-async function copyLinkFallback(url) {
+async function copyLinkFallback(message) {
   try {
-    await navigator.clipboard.writeText(url);
-    showSnackbar('Copied to clipboard!');
+    await navigator.clipboard.writeText(message);
+    showSnackbar('Copied invite message!');
   } catch {
-    // clipboard permission denied/unavailable — the link is still right
-    // there, selected, ready for a manual copy
+    // clipboard permission denied/unavailable — fall back to selecting the
+    // URL input so the user can still grab the link manually
     hud.challengeLinkInput.select();
   }
 }
 hud.challengeLinkCopyBtn.addEventListener('click', async (e) => {
   e.currentTarget.blur();
   const url = hud.challengeLinkInput.value;
-  if (!CAN_SHARE) return copyLinkFallback(url);
+  const message = challengeShareText(url);
+  if (!CAN_SHARE) return copyLinkFallback(message);
   try {
-    // title/text set the OS compose screen's pre-filled subject/body
-    // alongside the link — the recipient-facing challenge invite, not the
-    // sender-facing preview shown in #challengeLinkDesc above (that one's
-    // first-person "I completed…"; this is "a friend challenges you…").
-    await navigator.share({ title: 'ROWAY', text: challengeShareText(), url });
+    // The OS share sheet receives a pre-filled, editable message in Norwegian.
+    // The URL is inline in the text so the sender sees exactly what the
+    // recipient will get and can edit it before sending.
+    await navigator.share({ title: 'ROWAY', text: message });
     // the OS share sheet IS the confirmation UI (Messages compose, share
     // extension, etc.) — no snackbar needed on a successful share
   } catch (err) {
     if (err && err.name === 'AbortError') return; // user backed out — not a failure, say nothing
-    await copyLinkFallback(url); // share genuinely failed/blocked — same fallback as a share-incapable device
+    await copyLinkFallback(message); // share genuinely failed/blocked — same fallback as a share-incapable device
   }
 });
-// share body text: branches on game mode + completion state, but every
-// branch still feeds the same URL-creation/clipboard-fallback/error-handling
-// flow above unchanged. G.lastRun is guaranteed set here (shareChallenge()
-// returns early above if it isn't).
-function shareCopyText() {
+// Sender-facing preview shown in the challenge modal. Mirrors the first part
+// of the actual share message so the player knows what will be sent.
+function shareCopyText(url) {
+  const time = fmtTime(G.lastRun.time);
   if (G.gameMode === 'kapp') {
-    return `I completed today’s ROWAY course in ${fmtTime(G.lastRun.time)}. Can you beat me?`;
+    return `Jeg fikk ${time} på Roway ⚽ Klarer du å slå meg?`;
   }
   if (G.gameMode === 'voyage' && G.stageAtRunStart === FINAL_STAGE_ID && isStageFinal(FINAL_STAGE_ID)) {
-    return 'Mission complete. I claimed the World Cup trophy in the USA and rowed it home to Ullevaal.';
+    return `Jeg rodde VM-trofeet hjem til Ullevaal på ${time} 🏆 Klarer du å slå meg?`;
   }
-  return `I brought the World Cup trophy home in ROWAY. Can you beat my time? (${fmtTime(G.lastRun.time)})`;
+  return `Jeg fikk ${time} på Roway ⚽ Klarer du å slå meg?`;
 }
-// recipient-facing text for the actual share (OS share sheet's pre-filled
-// message, or the clipboard-copied context if the game later wants to show
-// it) — distinct from shareCopyText() above, which is the SENDER's own
-// first-person preview shown in the modal. This reframes the same context
-// as an invitation, per request ("A friend challenges you on ROWAY!").
-function challengeShareText() {
+// Recipient-facing text for the actual share (OS share sheet's pre-filled
+// editable message, or the clipboard-copied fallback). Written in Norwegian,
+// first person, with the time and link inline so the sender can edit it in
+// their messaging app before sending.
+function challengeShareText(url) {
+  const time = fmtTime(G.lastRun.time);
   if (G.gameMode === 'kapp') {
-    return `A friend challenges you on ROWAY! Beat their time of ${fmtTime(G.lastRun.time)} if you can.`;
+    return `Jeg fikk ${time} på Roway ⚽ Klarer du å slå meg?\n\nSpill her: ${url}`;
   }
   if (G.gameMode === 'voyage' && G.stageAtRunStart === FINAL_STAGE_ID && isStageFinal(FINAL_STAGE_ID)) {
-    return 'A friend challenges you on ROWAY! They brought the World Cup trophy home — can you do it too?';
+    return `Jeg rodde VM-trofeet hjem til Ullevaal på ${time} i Roway 🏆 Klarer du å slå meg?\n\nSpill her: ${url}`;
   }
-  return `A friend challenges you on ROWAY! Can you beat their time? (${fmtTime(G.lastRun.time)})`;
+  return `Jeg fikk ${time} på Roway ⚽ Klarer du å slå meg?\n\nSpill her: ${url}`;
 }
 // Result redesign: the duel outcome no longer has its own rematch button —
 // "Challenge a friend" (below) creates/shares the same link for both cases.
