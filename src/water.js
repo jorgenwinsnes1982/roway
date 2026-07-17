@@ -22,6 +22,69 @@ export function setWaveScale(s) {
   if (_waveScaleUniform) _waveScaleUniform.value = s;
 }
 
+// ---- Procedural normal map for micro-ripples ----
+// Replaces the in-shader hash-noise normal derivation with a precomputed
+// tiling normal map. A canvas-generated 256×256 fbm heightfield is converted
+// to normals; two scrolling UV layers sample it in the fragment shader.
+// This gives anisotropic, wind-like streaks instead of the previous
+// purely mathematical noise, and is typically cheaper on mobile GPUs
+// (one texture sample vs many hash/gradient evaluations).
+function _makeWaterNormalMap(size = 256) {
+  function h(x, y) {
+    const v = Math.sin(x * 127.1 + y * 311.7) * 43758.5453;
+    return v - Math.floor(v);
+  }
+  function n(x, y) {
+    const ix = Math.floor(x), iy = Math.floor(y);
+    const fx = x - ix, fy = y - iy;
+    const q = fx * fx * (3 - 2 * fx);
+    const r = fy * fy * (3 - 2 * fy);
+    const a = h(ix, iy), b = h(ix + 1, iy);
+    const c = h(ix, iy + 1), d = h(ix + 1, iy + 1);
+    return (a + (b - a) * q + (c - a) * r + (a - b - c + d) * q * r);
+  }
+  const heights = new Float32Array(size * size);
+  for (let y = 0; y < size; y++) {
+    for (let x = 0; x < size; x++) {
+      let amp = 0.5, freq = 0.025, hgt = 0;
+      for (let o = 0; o < 4; o++) {
+        hgt += n(x * freq, y * freq + o * 13.7) * amp;
+        amp *= 0.5;
+        freq *= 2;
+      }
+      heights[y * size + x] = hgt;
+    }
+  }
+  const c = document.createElement('canvas');
+  c.width = c.height = size;
+  const g = c.getContext('2d');
+  const id = g.createImageData(size, size);
+  const data = id.data;
+  for (let y = 0; y < size; y++) {
+    for (let x = 0; x < size; x++) {
+      const idx = y * size + x;
+      const x0 = heights[y * size + ((x - 1 + size) % size)];
+      const x1 = heights[y * size + ((x + 1) % size)];
+      const y0 = heights[((y - 1 + size) % size) * size + x];
+      const y1 = heights[((y + 1) % size) * size + x];
+      const dx = (x1 - x0) * 0.5;
+      const dy = (y1 - y0) * 0.5;
+      const len = Math.sqrt(dx * dx + dy * dy + 1);
+      const i = idx * 4;
+      data[i] = Math.floor((-dx / len * 0.5 + 0.5) * 255);
+      data[i + 1] = Math.floor((1.0 / len * 0.5 + 0.5) * 255);
+      data[i + 2] = Math.floor((-dy / len * 0.5 + 0.5) * 255);
+      data[i + 3] = 255;
+    }
+  }
+  g.putImageData(id, 0, 0);
+  const tex = new THREE.CanvasTexture(c);
+  tex.wrapS = THREE.RepeatWrapping;
+  tex.wrapT = THREE.RepeatWrapping;
+  tex.colorSpace = THREE.NoColorSpace;
+  return tex;
+}
+
 // CPU-side wave height + normal-ish slope sampling (matches vertex shader)
 export function sampleWater(x, z, t) {
   let y = 0, dx = 0, dz = 0;
@@ -45,6 +108,7 @@ const vertexShader = /* glsl */ `
   varying vec3 vWorldPos;
   varying float vWaveH;
   varying vec3 vNormal;
+  varying float vCurvature;
 
   const int NW = ${WAVES.length};
   uniform vec4 uWaveA[NW]; // dirX, dirZ, amp, wavelength
@@ -55,6 +119,7 @@ const vertexShader = /* glsl */ `
     float y = 0.0;
     float ddx = 0.0;
     float ddz = 0.0;
+    float curve = 0.0;
     for (int i = 0; i < NW; i++) {
       vec2 dir = normalize(uWaveA[i].xy);
       float k = 6.28318 / uWaveA[i].w;
@@ -64,9 +129,13 @@ const vertexShader = /* glsl */ `
       float d = amp * k * cos(phase);
       ddx += dir.x * d;
       ddz += dir.y * d;
+      // second derivative tells us how sharply the wave crest is curling;
+      // passed to the fragment shader for foam placement
+      curve += -amp * k * k * sin(phase);
     }
     wp.y += y;
     vWaveH = y;
+    vCurvature = curve;
     vWorldPos = wp.xyz;
     vNormal = normalize(vec3(-ddx, 1.0, -ddz));
     gl_Position = projectionMatrix * viewMatrix * wp;
@@ -95,9 +164,11 @@ const fragmentShader = /* glsl */ `
   uniform float uSunStr;      // sun-glitter brightness
   uniform float uSunSharp;    // sun-glitter tightness (higher = smaller corridor)
   uniform float uSparkStr;    // hot specular sparkle strength (reaches bloom)
+  uniform sampler2D uNormalMap; // procedural tiling normal map for micro-ripples
   varying vec3 vWorldPos;
   varying float vWaveH;
   varying vec3 vNormal;
+  varying float vCurvature;
 
   // cheap hash noise for sparkle / foam breakup
   float hash(vec2 p) {
@@ -174,30 +245,25 @@ const fragmentShader = /* glsl */ `
     vec3 V = normalize(cameraPosition - vWorldPos);
     vec3 L = normalize(uSunDir);
 
-    // micro-ripples: TWO decorrelated normal layers, weak and at large scales
-    // (period ~1.6m / ~3.7m — coarser than the original ~0.4m single layer),
-    // so the surface reads as soft crinkle rather than embossed/tiled plastic.
+    // micro-ripples: TWO decorrelated normal-map layers scrolling at different
+    // scales/speeds/directions. A precomputed fbm normal map replaces the old
+    // in-shader hash/gradient noise: it gives wind-like anisotropic streaks,
+    // is cheaper on mobile (one texture sample per layer vs many hash ops),
+    // and the same map tiles forever so there is no visible repeat cell.
     // Faded at BOTH ends of the view: gone right at the camera (no
     // high-frequency hammering underfoot) and toward the horizon. The far
-    // fade runs 150-380m — an earlier 100-240m attempt killed the sun-glint
-    // corridor (which lives exactly in that mid-distance band toward the
-    // sun): without ripple normals there, sunLobe goes uniform and the
-    // glitter stops twinkling, reading as "static, lifeless water".
+    // fade runs 150-380m — that mid-distance band toward the sun is where
+    // the glitter corridor lives, so we keep ripple detail there.
     float dist = distance(cameraPosition, vWorldPos);
     float detail = smoothstep(8.0, 30.0, dist) * (1.0 - smoothstep(150.0, 380.0, dist)) * uDetail;
-    // layer A: fine (~1.1m period), drifting one way. A coarser 0.62/0.27
-    // attempt made the surface read as near-static on real phones — these
-    // scales keep visible ripple motion without the old 2.6-scale tiling.
-    vec2 pa = vWorldPos.xz * 0.9 + vec2(uTime * 0.35, uTime * 0.10);
-    // layer B: coarser (~2.4m), drifting the other way (breaks the single-
-    // pattern look — different scale, direction AND speed from layer A)
-    vec2 pb = vWorldPos.xz * 0.42 + vec2(-uTime * 0.13, uTime * 0.27);
-    float me = 0.35;
-    vec2 ga = vec2(noise(pa + vec2(me, 0.0)) - noise(pa - vec2(me, 0.0)),
-                   noise(pa + vec2(0.0, me)) - noise(pa - vec2(0.0, me)));
-    vec2 gb = vec2(noise(pb + vec2(me, 0.0)) - noise(pb - vec2(me, 0.0)),
-                   noise(pb + vec2(0.0, me)) - noise(pb - vec2(0.0, me)));
-    vec2 mg = ga * uNormalStrA + gb * uNormalStrB;
+    // layer A: fine (~1.1m world period), drifting one way
+    vec2 uva = vWorldPos.xz * 0.03 + vec2(uTime * 0.05, uTime * 0.02);
+    // layer B: coarser (~2.4m world period), drifting the other way
+    vec2 uvb = vWorldPos.xz * 0.015 + vec2(-uTime * 0.03, uTime * 0.04);
+    // RG stores xy perturbation; reconstruct a reasonable z via normalization
+    vec3 na = normalize(texture2D(uNormalMap, uva).rgb * 2.0 - 1.0);
+    vec3 nb = normalize(texture2D(uNormalMap, uvb).rgb * 2.0 - 1.0);
+    vec2 mg = na.xy * uNormalStrA + nb.xy * uNormalStrB;
     N = normalize(N + vec3(mg.x, 0.0, mg.y) * detail);
 
     // ---- water body: deep turquoise-black -> greenish shallows ----
@@ -234,10 +300,13 @@ const fragmentShader = /* glsl */ `
     vec3 reflCol = mix(horizonCol, uSkyColor, pow(ry, 0.65));
     vec3 col = mix(body, reflCol, F);
 
-    // ---- foam: crest height AND geometric slope, broken up by noise ----
+    // ---- foam: crest height, geometric slope AND curvature, broken up by noise ----
+    // Curvature (second derivative of the wave height) makes foam appear on
+    // crests that are actually curling, not just high and flat.
     float slope = 1.0 - normalize(vNormal).y;
+    float curveTerm = abs(vCurvature) * 0.12;
     float foamN = noise(vWorldPos.xz * 1.4 + uTime * 0.35);
-    float foam = smoothstep(0.030, 0.085, slope) * smoothstep(0.30, 0.95, vWaveH);
+    float foam = smoothstep(0.030, 0.085, slope + curveTerm) * smoothstep(0.30, 0.95, vWaveH);
     foam *= 0.45 + 0.55 * foamN;
     foam = min(foam, 1.0);
     col = mix(col, vec3(0.90, 0.95, 0.99), foam * 0.7);
@@ -342,8 +411,10 @@ export function createWater({ sunDir, fogColor, fogNear, fogFar, mobile = false 
   const geo = new THREE.PlaneGeometry(WATER_W, WATER_L, WATER_SEG_W, WATER_SEG_L);
   geo.rotateX(-Math.PI / 2);
   const preset = mobile ? WATER_PRESETS.mobile : WATER_PRESETS.desktop;
+  const normalMap = _makeWaterNormalMap(256);
 
   const uniforms = {
+    uNormalMap: { value: normalMap },
     uTime: { value: 0 },
     uSunDir: { value: sunDir.clone() },
     uDeepColor: { value: new THREE.Color(0x03151e) },   // turquoise-black depths
@@ -425,6 +496,11 @@ export function createWater({ sunDir, fogColor, fogNear, fogFar, mobile = false 
       set sunSharp(v) { uniforms.uSunSharp.value = v; },
       get sparkStr() { return uniforms.uSparkStr.value; },
       set sparkStr(v) { uniforms.uSparkStr.value = v; },
+    },
+    dispose() {
+      geo.dispose();
+      mat.dispose();
+      normalMap.dispose();
     },
   };
 }

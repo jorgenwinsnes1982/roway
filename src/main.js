@@ -365,6 +365,22 @@ function composerFboComplete() {
 const sunDir = new THREE.Vector3(0.35, 0.32, -0.88).normalize();
 const sun = new THREE.DirectionalLight(0xffe0b8, 2.2);
 sun.position.copy(sunDir).multiplyScalar(300);
+// ---- shadow map setup (desktop only by default) ----
+// PCFSoftShadowMap gives soft, realistic penumbras without extra passes.
+// The shadow camera follows the ship for sharp, focused shadows rather than
+// stretching a low-resolution map across the entire 1500 m course.
+renderer.shadowMap.enabled = false; // toggled per-quality in applyQuality()
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+sun.castShadow = false;
+sun.shadow.mapSize.set(2048, 2048);
+sun.shadow.camera.near = 1;
+sun.shadow.camera.far = 600;
+sun.shadow.camera.left = -80;
+sun.shadow.camera.right = 80;
+sun.shadow.camera.top = 80;
+sun.shadow.camera.bottom = -80;
+sun.shadow.bias = -0.0008;
+sun.shadow.normalBias = 0.02;
 scene.add(sun);
 scene.add(new THREE.HemisphereLight(0x9db8dd, 0x16304f, 0.75));
 // cool-toned fill light from roughly the camera's own side (above, behind the
@@ -384,6 +400,8 @@ scene.add(fillLight);
 const sky = createSky();
 scene.add(sky);
 const water = createWater({ sunDir, fogColor: FOG_COLOR, fogNear: 320, fogFar: 1150, mobile: IS_MOBILE_GPU });
+water.mesh.castShadow = false;
+water.mesh.receiveShadow = false;
 scene.add(water.mesh);
 
 // ================= Quality tiers (LOW / MEDIUM / HIGH) =================
@@ -413,6 +431,16 @@ function applyQuality(level) {
   const low = level === 'low';
   bloomPass.enabled = !low;
   finishPass.enabled = !low;
+  // ---- shadows: desktop medium/high only ----
+  // Mobile keeps the cheap canvas contact shadows; real shadow maps are
+  // too expensive on fill-rate-bound GPUs and are gated to desktop tiers.
+  const useShadows = !IS_MOBILE_GPU && level !== 'low';
+  renderer.shadowMap.enabled = useShadows;
+  sun.castShadow = useShadows;
+  setShipShadows(ship, useShadows);
+  setShipShadows(rival, useShadows);
+  setCourseShadows(course, useShadows);
+  setFjordShadows(fjord, useShadows);
   // baseline is whichever WATER_PRESETS entry createWater() already picked
   // (see water.js) — LOW shaves further off that same baseline instead of
   // hardcoding its own separate number that could drift out of sync with it.
@@ -451,6 +479,7 @@ function sampleAdaptiveQuality(now, frameMs) {
 
 const fjord = createFjord(); // kept — stage moods tint its materials live
 scene.add(fjord);
+setFjordShadows(fjord, !IS_MOBILE_GPU && quality !== 'low');
 scene.add(createClouds());
 scene.add(createFogBanks());
 const seagulls = createSeagulls();
@@ -557,6 +586,7 @@ function ensureCourseForMode() {
     if (builtStageId === stage.id) return stage;
     disposeCourse(scene, course);
     course = createCourse(scene, stage.seed, stage);
+    setCourseShadows(course, !IS_MOBILE_GPU && quality !== 'low');
     builtStageId = stage.id;
     // same shader pre-warm as the boot-time one below (renderer.compile),
     // but for THIS stage's fresh materials — without it, the first frame
@@ -573,6 +603,7 @@ function ensureCourseForMode() {
   if (builtStageId !== null) {
     disposeCourse(scene, course);
     course = createCourse(scene, DAILY_SEED); // bit-identical daily layout — leaderboard premise
+    setCourseShadows(course, !IS_MOBILE_GPU && quality !== 'low');
     builtStageId = null;
     renderer.compile(scene, camera); // same pre-warm as the voyage branch above
   }
@@ -592,6 +623,7 @@ let voyage = loadVoyage();
 const shipData = buildShip('norway', { trophy: true });
 const ship = shipData.ship;
 scene.add(ship);
+setShipShadows(ship, !IS_MOBILE_GPU && quality !== 'low');
 // warm lantern light over the deck
 const deckLight = new THREE.PointLight(0xff9540, 14, 26, 2);
 deckLight.position.set(0, 4, 0);
@@ -601,6 +633,7 @@ ship.add(deckLight);
 const rivalData = buildShip('sweden');
 const rival = rivalData.ship;
 scene.add(rival);
+setShipShadows(rival, !IS_MOBILE_GPU && quality !== 'low');
 
 // ---- soft contact shadow under each hull ----
 // Without this the boats read as floating just above the water — a real
@@ -628,6 +661,8 @@ function createHullShadow() {
   geo.rotateX(-Math.PI / 2); // bake flat once — only rotation.y changes per frame
   const mat = new THREE.MeshBasicMaterial({ map: hullShadowTex, transparent: true, depthWrite: false });
   const mesh = new THREE.Mesh(geo, mat);
+  mesh.castShadow = false;
+  mesh.receiveShadow = false;
   scene.add(mesh);
   return mesh;
 }
@@ -637,6 +672,60 @@ function updateHullShadow(mesh, x, z, heading, waterY) {
 }
 const shipShadow = createHullShadow();
 const rivalShadow = createHullShadow();
+
+// ---- shadow-map camera follows the player ship for crisp, focused shadows ----
+function updateSunShadowCamera(x, z) {
+  if (!renderer.shadowMap.enabled) return;
+  sun.target.position.set(x, 0, z);
+  sun.target.updateMatrixWorld();
+  sun.position.copy(sun.target.position).add(sunDir.clone().multiplyScalar(200));
+  sun.shadow.camera.updateProjectionMatrix();
+}
+
+// ---- apply shadow cast/receive flags based on object type ----
+// Called after each quality change so mobile/low can opt out entirely, while
+// desktop tiers get shadows only on objects that matter visually.
+function setShipShadows(root, enabled) {
+  root.traverse((o) => {
+    if (!o.isMesh) return;
+    // sails are double-sided translucent-ish cloth — receiving shadows looks
+    // wrong and self-shadowing causes artifacts; keep them unshadowed.
+    if (o.material && o.material.side === THREE.DoubleSide && o.material.map && o.geometry.type === 'PlaneGeometry') {
+      o.castShadow = false;
+      o.receiveShadow = false;
+      return;
+    }
+    o.castShadow = enabled;
+    o.receiveShadow = enabled;
+  });
+}
+function setCourseShadows(courseGroup, enabled) {
+  if (!courseGroup) return;
+  courseGroup.traverse((o) => {
+    if (!o.isMesh && !o.isInstancedMesh) return;
+    // Emissive/translucent props (glow shells, flags, beams, nets) shouldn't
+    // cast or receive hard shadows.
+    const mat = o.material;
+    const hasEmissive = mat && mat.emissive && mat.emissive.getHex && mat.emissive.getHex() !== 0;
+    const isGlow = mat && (hasEmissive || mat.transparent || mat.toneMapped === false || mat.wireframe);
+    if (isGlow) {
+      o.castShadow = false;
+      o.receiveShadow = false;
+      return;
+    }
+    // Gate poles, footballs, ice floes, goal frame, landmarks cast+receive.
+    o.castShadow = enabled;
+    o.receiveShadow = enabled;
+  });
+}
+function setFjordShadows(fjordGroup, enabled) {
+  if (!fjordGroup) return;
+  // Only the near mountain layer receives shadows; the far hazy layer and
+  // the merged near geometry are too large/polygonal to cast nice shadows.
+  const [far, near] = fjordGroup.children;
+  if (far) { far.castShadow = false; far.receiveShadow = false; }
+  if (near) { near.castShadow = false; near.receiveShadow = enabled; }
+}
 
 const R = {
   x: 14, z: 0, speed: 0, heading: 0, strokePhase: 0.5, finishTime: null, pace: 13.4,
@@ -5319,6 +5408,7 @@ function update(dt, realDt = dt) {
     G.heading * 0.14                 // lean into turns
   );
   updateHullShadow(shipShadow, G.x, G.z, G.heading, w.y);
+  updateSunShadowCamera(G.x, G.z);
 
   // wake particles while moving
   if (G.speed > 3 && Math.random() < dt * G.speed * 1.6) {
