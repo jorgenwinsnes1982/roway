@@ -1709,14 +1709,14 @@ if (hud.zone) hud.zone.setAttribute('cx', OAR_X0 + ((zoneLoVis + zoneHiVis) / 2)
 // Charge TIMING is untouched (still fixed dt/CHARGE_TIME) — tempo (T.energy)
 // only speeds up the visual pulse + the donk + the boat's speed cap, never the
 // skill window (see the maxSpeed change in update()).
-// Rune power-bar art (public/buttons/rowbar.png) — replaces the old procedural
+// Rune power-bar art (public/buttons/rowbar.webp) — replaces the old procedural
 // band/ticks/gradient track (see drawPendulum). MAXA below is fitted to this
 // image's own measured curvature so pendPoint() places the bob/lightning
 // exactly on the glowing groove — see ROWBAR_IMG_* calibration below.
 const rowbarImg = new Image();
 let rowbarLoaded = false;
 rowbarImg.onload = () => { rowbarLoaded = true; bootLog('asset-ready', { asset: 'rowbar.png' }); };
-rowbarImg.src = '/buttons/rowbar.png';
+rowbarImg.src = '/buttons/rowbar.webp';
 // Pixel coords (in the source PNG) of the left/right cap's track midpoint —
 // measured by sampling the image's alpha channel. Used to scale+place the
 // image so its caps land exactly on pendPoint(-MAXA)/pendPoint(MAXA).
@@ -2411,12 +2411,12 @@ const voyageMapApi = mountVoyageMap(hud.voyageMapWrap);
 // hard-coded blocks. Badges (ship + "STAGE N/5") still come from
 // public/stage_maps/stageN.png, unchanged.
 const MAP_ASSET_BASE = '/3d%20map';
-const stageMapOverlaySrc = (id) => `${MAP_ASSET_BASE}/stage${id}.png`;
+const stageMapOverlaySrc = (id) => `${MAP_ASSET_BASE}/stage${id}.webp`;
 // Preload every overlay + badge so the interlude/voyage screens never flash
 // while the first swap loads. Fade-in on `src` change is setStageImage().
 for (let i = 1; i <= 5; i++) {
   const map = new Image(); map.src = stageMapOverlaySrc(i);
-  const badge = new Image(); badge.src = `/stage_maps/stage${i}.png`;
+  const badge = new Image(); badge.src = `/stage_maps/stage${i}.webp`;
 }
 function setStageImage(imgEl, src) {
   imgEl.classList.remove('loaded');
@@ -2476,7 +2476,7 @@ function openVoyageScreen(fromScreen, forRaceStart = false) {
     voyageDone = stage.id === FINAL_STAGE_ID && isStageFinal(FINAL_STAGE_ID);
     if (voyageDone) {
       // "Voyage complete" is now said once, by the header wordmark image
-      // below (public/voyagecomplete.png) — this line is just the remaining
+      // below (public/voyagecomplete.webp) — this line is just the remaining
       // body copy, so it never repeats the same words twice on screen.
       hud.voyageScreenTitle.textContent = 'The trophy is home 🏆';
       renderVoyageDoneStatus(); // fire-and-forget — appends a rank line once known
@@ -2499,7 +2499,7 @@ function openVoyageScreen(fromScreen, forRaceStart = false) {
       // "Stage N —" prefix here, just the stage's own name
       hud.voyageScreenTitle.textContent = stage.name;
       setStageImage(hud.voyageStageCardImg, stageMapOverlaySrc(stage.id));
-      setStageImage(hud.voyageStageBadgeImg, `/stage_maps/stage${stage.id}.png`);
+      setStageImage(hud.voyageStageBadgeImg, `/stage_maps/stage${stage.id}.webp`);
       hud.voyageStageBadgeImg.classList.remove('hiddenMsg');
       ensureMapVideoPlaying(hud.voyageStageVideo);
       hud.voyageStartRaceBtn.textContent = `Row! — Start Stage ${stage.id}`;
@@ -2622,7 +2622,7 @@ function openStageInterlude() {
   // stage map v3: the NEXT stage's route overlay over the shared video loop,
   // plus the ship + "STAGE N/5" badge (stage_maps/stageN.png) layered on top
   setStageImage(hud.interludeMapImg, stageMapOverlaySrc(stageAfter.id));
-  setStageImage(hud.interludeStageBadgeImg, `/stage_maps/stage${stageAfter.id}.png`);
+  setStageImage(hud.interludeStageBadgeImg, `/stage_maps/stage${stageAfter.id}.webp`);
   ensureMapVideoPlaying(hud.interludeMapVideo);
 
   const nextInfo = LANDMARK_INFO[stageAfter.landmark];

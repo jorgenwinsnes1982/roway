@@ -235,7 +235,7 @@ function mountShineFX(anchorEl, opts) {
   return api;
 }
 
-// Splash key art: public/keyart_final.png (characters + shield + trophy +
+// Splash key art: public/keyart_final.webp (characters + shield + trophy +
 // ROWAY wordmark in one image — same 1448x1086 canvas as the retired
 // keyart_logo.png, so every size/aspect rule carries over untouched) with a
 // shared pointer/tilt 3D lean plus a travelling shine.
@@ -243,7 +243,7 @@ function mountShineFX(anchorEl, opts) {
 // and if WebGL can't init at all the plain HTML .title remains.
 export function createLogoFX() {
   return mountShineFX(document.querySelector('#startScreen .title'), {
-    src: '/keyart_final.png',
+    src: '/keyart_final.webp',
     canvasId: 'logoCanvas',
     hideClass: 'logoHidden',
     texW: 1024, texH: 768,
@@ -263,13 +263,13 @@ export function createLogoFX() {
   });
 }
 
-// How-to hero: public/howto-play.png (the longship + "HOW TO PLAY" ice title)
+// How-to hero: public/howto-play.webp (the longship + "HOW TO PLAY" ice title)
 // gets the exact same shine/tilt treatment as the splash key art. No procedural
 // fallback — if the PNG or WebGL fails, the plain <img class="howtoTitleImg">
 // stays visible.
 export function createHowtoFX() {
   return mountShineFX(document.querySelector('.howtoTitleImg'), {
-    src: '/howto-play.png',
+    src: '/howto-play.webp',
     canvasId: 'howtoLogoCanvas',
     hideClass: 'logoHidden',
     initAspect: '704 / 596',
@@ -292,7 +292,7 @@ const PHOTO_ASPECT = 1920 / 1200;
 export function createVoyageDoneFX() {
   const anchor = document.querySelector('#voyageDoneImg');
   const fx = mountShineFX(anchor, {
-    src: '/3d%20ulleval/ulleval.png',
+    src: '/3d%20ulleval/ulleval.webp',
     canvasId: 'voyageDoneShineCanvas',
     hideClass: 'logoHidden',
     intensity: 0.6, // busier/brighter photo than the other two shine targets — needs more contrast to read

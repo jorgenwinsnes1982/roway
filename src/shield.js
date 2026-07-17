@@ -54,7 +54,7 @@ export function createShieldFX() {
       } catch { /* keep the procedural drawing */ }
     };
     img.onerror = () => { /* PNG missing -> procedural shield stays */ };
-    img.src = '/norge-skjold.png';
+    img.src = '/norge-skjold.webp';
 
     // ---- wrapper (landing animation) + canvas (per-frame 3D tilt) ----
     wrap = document.createElement('div');

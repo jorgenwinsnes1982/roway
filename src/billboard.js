@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 
 // ---- "A game by Winsen" signature billboard ----
-// public/banner.png is a deliberate branding exception (same category as
+// public/banner.webp is a deliberate branding exception (same category as
 // roway-logo.png / norge-skjold.png) — everything else on the course is
 // procedural. 450×106 px; height is always derived from this so the plate
 // never stretches regardless of the width a call site asks for.
@@ -13,7 +13,7 @@ const BANNER_ASPECT = 450 / 106;
 // texture on a stage switch, not four, and nothing outlives its course.
 export function loadBannerTexture() {
   const tex = new THREE.TextureLoader().load(
-    '/banner.png', undefined, undefined,
+    '/banner.webp', undefined, undefined,
     (err) => console.error('banner.png failed to load', err)
   );
   tex.colorSpace = THREE.SRGBColorSpace;

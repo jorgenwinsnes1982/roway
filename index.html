@@ -61,8 +61,8 @@
   <meta property="og:title" content="ROWAY — Row the Trophy Home">
   <meta property="og:description" content="Lead Norway’s Viking football crew on a five-stage journey to the USA, claim the World Cup trophy, and row it home to Ullevaal.">
   <meta property="og:url" content="https://roway.no/">
-  <meta property="og:image" content="https://roway.no/share-image.jpg">
-  <meta property="og:image:secure_url" content="https://roway.no/share-image.jpg">
+  <meta property="og:image" content="https://roway.no/share-image.webp">
+  <meta property="og:image:secure_url" content="https://roway.no/share-image.webp">
   <meta property="og:image:type" content="image/jpeg">
   <meta property="og:image:width" content="1200">
   <meta property="og:image:height" content="620">
@@ -72,7 +72,7 @@
   <meta name="twitter:card" content="summary_large_image">
   <meta name="twitter:title" content="ROWAY — Row the Trophy Home">
   <meta name="twitter:description" content="Lead Norway’s Viking football crew on a five-stage journey to the USA, claim the World Cup trophy, and row it home to Ullevaal.">
-  <meta name="twitter:image" content="https://roway.no/share-image.jpg">
+  <meta name="twitter:image" content="https://roway.no/share-image.webp">
   <meta name="twitter:image:alt" content="ROWAY — Norway’s Viking football crew rowing the World Cup trophy home.">
 
   <!-- Google structured data: single game/application block (see the
@@ -90,7 +90,7 @@
   "alternateName": "ROWAY — Row the Trophy Home",
   "url": "https://roway.no/",
   "description": "Lead Norway’s Viking football crew on a five-stage journey to the USA, claim the World Cup trophy, and row it home to Ullevaal.",
-  "image": "https://roway.no/share-image.jpg",
+  "image": "https://roway.no/share-image.webp",
   "applicationCategory": "GameApplication",
   "genre": [
     "Arcade",
@@ -133,7 +133,7 @@
     gtag('config', 'G-HHKF2J62LC');
   </script>
 
-  <link rel="icon" href="/norge-skjold.png">
+  <link rel="icon" href="/norge-skjold.webp">
   <!-- rowbar.png is the FIRST thing the player sees any real detail on (the
        preloader's power-bar art, visible before intro/splash even reveal) —
        fetched from HTML-parse time in parallel with everything else, instead
@@ -141,7 +141,7 @@
        line further down. See stepPreload()'s rowbarLoaded gate in main.js:
        the preloader draws NOTHING until this resolves, so a fast preload
        here is what keeps that gate from ever being visible. -->
-  <link rel="preload" as="image" href="/buttons/rowbar.png" fetchpriority="high">
+  <link rel="preload" as="image" href="/buttons/rowbar.webp" fetchpriority="high">
   <!-- Cinzel: Roman-inspired engraved serif — headings/display text (see the
        single #hud font-family rule below; everything inherits it by default).
        Domine: a readable serif used for body/paragraph copy (.introText)
@@ -1131,7 +1131,7 @@
     }
     /* #howtoSpaceKey (how-to screen only): a live not-pressed/pressed toggle
        instead of the old static space.png — two separate 360x84 stills,
-       public/buttons/space_default.png and space_pressed.png, swapped via
+       public/buttons/space_default.webp and space_pressed.webp, swapped via
        background-image (not a sprite-sheet position trick, since these are
        two independent files rather than stacked frames in one sheet).
        main.js's demoFrame() drives .pressed in lockstep with the pendulum
@@ -1140,10 +1140,10 @@
        release input. */
     .keyBtn--space {
       height: 45.6px; aspect-ratio: 360 / 84; display: inline-block;
-      background-image: url('/buttons/space_default.png');
+      background-image: url('/buttons/space_default.webp');
       background-repeat: no-repeat; background-size: 100% 100%; background-position: center;
     }
-    .keyBtn--space.pressed { background-image: url('/buttons/space_pressed.png'); }
+    .keyBtn--space.pressed { background-image: url('/buttons/space_pressed.webp'); }
     @media (max-width: 640px) {
       .keyBtn { height: 38.4px; margin: 0 2px; }
       .keyBtn--space { height: 38.4px; }
@@ -2253,12 +2253,12 @@
     .raster-btn__piece--right { grid-column: 3; }
     .raster-btn--red { --btn-glow: rgba(255, 110, 62, .52); }
     .raster-btn--blue { --btn-glow: rgba(128, 198, 255, .5); }
-    .raster-btn--red .raster-btn__piece--left { background-image: url('/raster_btn/btn-red-left.png'); }
-    .raster-btn--red .raster-btn__piece--mid { background-image: url('/raster_btn/btn-red-mid.png'); }
-    .raster-btn--red .raster-btn__piece--right { background-image: url('/raster_btn/btn-red-right.png'); }
-    .raster-btn--blue .raster-btn__piece--left { background-image: url('/raster_btn/btn-blue-left.png'); }
-    .raster-btn--blue .raster-btn__piece--mid { background-image: url('/raster_btn/btn-blue-mid.png'); }
-    .raster-btn--blue .raster-btn__piece--right { background-image: url('/raster_btn/btn-blue-right.png'); }
+    .raster-btn--red .raster-btn__piece--left { background-image: url('/raster_btn/btn-red-left.webp'); }
+    .raster-btn--red .raster-btn__piece--mid { background-image: url('/raster_btn/btn-red-mid.webp'); }
+    .raster-btn--red .raster-btn__piece--right { background-image: url('/raster_btn/btn-red-right.webp'); }
+    .raster-btn--blue .raster-btn__piece--left { background-image: url('/raster_btn/btn-blue-left.webp'); }
+    .raster-btn--blue .raster-btn__piece--mid { background-image: url('/raster_btn/btn-blue-mid.webp'); }
+    .raster-btn--blue .raster-btn__piece--right { background-image: url('/raster_btn/btn-blue-right.webp'); }
     .raster-btn__label {
       position: relative;
       grid-column: 1 / -1;
@@ -2540,7 +2540,7 @@
         <div class="value" id="hudSpeed">0 <small>km/h</small></div>
       </div>
       <div class="pill">
-        <div class="value" id="hudBalls"><span id="hudBallsCount">0</span><img class="ballIcon" src="/football_icon.png" alt=""></div>
+        <div class="value" id="hudBalls"><span id="hudBallsCount">0</span><img class="ballIcon" src="/football_icon.webp" alt=""></div>
       </div>
     </div>
     <div id="feedback"></div>
@@ -2627,7 +2627,7 @@
       <div class="hiddenMsg" id="voyageStageCardWrap">
         <div class="mapVideoBox">
           <video id="voyageStageVideo" class="mapVideo" src="/3d%20map/3dmap_loop.mp4"
-                 poster="/3d%20map/3dmap_poster.jpg"
+                 poster="/3d%20map/3dmap_poster.webp"
                  autoplay loop muted playsinline preload="auto" tabindex="-1"></video>
           <img id="voyageStageCardImg" class="mapOverlay stageFadeImg" alt="" decoding="async">
         </div>
@@ -2636,7 +2636,7 @@
            the Ullevaal homecoming artwork once the trophy is home — see
            openVoyageScreen()'s voyageDone branch in main.js. -->
       <div class="hiddenMsg" id="voyageDoneWrap">
-        <img id="voyageDoneImg" src="/3d%20ulleval/ulleval.png" alt="" decoding="async">
+        <img id="voyageDoneImg" src="/3d%20ulleval/ulleval.webp" alt="" decoding="async">
       </div>
       <!-- badge lives OUTSIDE the card wrap: the wrap is its own stacking
            context (z 0 in stage-card-mode), so inside it the badge would
@@ -2648,7 +2648,7 @@
       <!-- voyage-complete header: the "VOYAGE COMPLETE" wordmark IS the
            headline now — the plain-text version is dropped from
            #voyageScreenTitle (see main.js) so it's never said twice. -->
-      <img class="hiddenMsg" id="voyageDoneHeaderImg" src="/voyagecomplete.png" alt="Voyage complete" decoding="async">
+      <img class="hiddenMsg" id="voyageDoneHeaderImg" src="/voyagecomplete.webp" alt="Voyage complete" decoding="async">
       <!-- voyage-complete stats: place/time/score, filled in by
            renderVoyageDoneStatus() in main.js — place resolves async (server
            round-trip), time+score are local and shown immediately. -->
@@ -2741,11 +2741,11 @@
     <div class="screen hidden" id="howtoScreen">
       <div class="howtoInner">
         <button class="modalClose" id="howtoModalX" aria-label="Close">✕</button>
-        <img class="howtoTitleImg" src="/howto-play.png" alt="How to Play" decoding="async">
+        <img class="howtoTitleImg" src="/howto-play.webp" alt="How to Play" decoding="async">
         <div class="confirmTitle howtoModalTitle">How to play</div>
         <div class="introText"><span class="deskOnly">Hold <b>SPACE</b> to charge the oar.</span><span class="touchOnly">Hold the <b>red button</b> to charge the oar.</span> Release when the spark reaches the center of the <span class="greenZone">GREEN ZONE</span> for the perfect oar stroke.</div>
         <div class="howtoLines">
-          <div class="howtoLine"><b>Steer:</b> <span class="deskOnly"><img class="keyBtn" src="/buttons/left.png" alt="left" decoding="async"> <img class="keyBtn" src="/buttons/right.png" alt="right" decoding="async"> or <img class="keyBtn" src="/buttons/a.png" alt="A" decoding="async"> <img class="keyBtn" src="/buttons/d.png" alt="D" decoding="async"></span><span class="touchOnly">the arrow buttons at bottom left</span></div>
+          <div class="howtoLine"><b>Steer:</b> <span class="deskOnly"><img class="keyBtn" src="/buttons/left.webp" alt="left" decoding="async"> <img class="keyBtn" src="/buttons/right.webp" alt="right" decoding="async"> or <img class="keyBtn" src="/buttons/a.webp" alt="A" decoding="async"> <img class="keyBtn" src="/buttons/d.webp" alt="D" decoding="async"></span><span class="touchOnly">the arrow buttons at bottom left</span></div>
           <div class="howtoLine"><b>Row:</b> <span class="deskOnly">hold <span class="keyBtn keyBtn--space" id="howtoSpaceKey" role="img" aria-label="SPACE"></span></span><span class="touchOnly">hold the red button</span> — release in the <span class="greenZone">green zone</span></div>
         </div>
 
@@ -2764,10 +2764,10 @@
 
     <!-- Leaderboard modal (from the splash screen) -->
     <div class="screen hidden" id="lbScreen">
-      <!-- icy LEADERBOARD wordmark from the Figma frame (public/leaderboard.png,
+      <!-- icy LEADERBOARD wordmark from the Figma frame (public/leaderboard.webp,
            464×84) — replaces the old text title. Lowercase filename matches
            the file on disk exactly: deploy servers are case-sensitive. -->
-      <img class="lbTitleImg" src="/leaderboard.png" alt="LEADERBOARD" />
+      <img class="lbTitleImg" src="/leaderboard.webp" alt="LEADERBOARD" />
       <!-- top-level mode tabs — which game mode's board is showing. Time
            Attack = the existing KAPPRO Today/All-time board, unchanged.
            Story Mode = the REISEN combined-time board, reusing the same
@@ -2816,7 +2816,7 @@
          (Reisen). See fillResultRaceTestData/fillResultVoyageTestData in
          src/devScreens.js for a field-by-field map of what each mode shows. -->
     <div class="screen hidden" id="resultScreen">
-      <img id="resultShield" src="/norge-skjold.png" alt="" decoding="async"
+      <img id="resultShield" src="/norge-skjold.webp" alt="" decoding="async"
            onerror="this.style.display='none'">
       <!-- small secondary context — the match result is no longer the hero -->
       <div class="title resultTitleSmall" id="resultTitle">FINISH!</div>
@@ -2942,7 +2942,7 @@
         <div class="interludeMapWrap" id="interludeMapWrap">
           <div class="mapVideoBox">
             <video id="interludeMapVideo" class="mapVideo" src="/3d%20map/3dmap_loop.mp4"
-                   poster="/3d%20map/3dmap_poster.jpg"
+                   poster="/3d%20map/3dmap_poster.webp"
                    autoplay loop muted playsinline preload="auto" tabindex="-1"></video>
             <img id="interludeMapImg" class="mapOverlay stageFadeImg" alt="" decoding="async">
           </div>

@@ -217,9 +217,9 @@ function fillVoyageStageCardTestData() {
   scr.classList.add('stage-card-mode');
   document.getElementById('voyageStageCardWrap').classList.remove('hiddenMsg');
   const img = document.getElementById('voyageStageCardImg');
-  img.src = '/3d%20map/stage3.png'; img.classList.add('loaded');
+  img.src = '/3d%20map/stage3.webp'; img.classList.add('loaded');
   const badge = document.getElementById('voyageStageBadgeImg');
-  badge.src = '/stage_maps/stage3.png'; badge.classList.add('loaded');
+  badge.src = '/stage_maps/stage3.webp'; badge.classList.add('loaded');
   const title = document.getElementById('voyageScreenTitle');
   title.classList.remove('voyageDoneMsg');
   title.textContent = 'THE ICELAND PASSAGE';
@@ -242,9 +242,9 @@ function fillVoyageMapTestData() {
 }
 function fillInterludeTestData() {
   const img = document.getElementById('interludeMapImg');
-  img.src = '/3d%20map/stage3.png'; img.classList.add('loaded');
+  img.src = '/3d%20map/stage3.webp'; img.classList.add('loaded');
   const badge = document.getElementById('interludeStageBadgeImg');
-  badge.src = '/stage_maps/stage3.png'; badge.classList.add('loaded');
+  badge.src = '/stage_maps/stage3.webp'; badge.classList.add('loaded');
   document.getElementById('interludeTrophyBanner').classList.add('hiddenMsg');
   document.getElementById('interludeGoBtn').textContent = 'START STAGE 4';
   const vid = document.getElementById('interludeMapVideo');

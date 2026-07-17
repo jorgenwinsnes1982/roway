@@ -35,8 +35,8 @@ const PACKAGE_BASE = '/roway_map_dev_package/';
 const MANIFEST_URL = `${PACKAGE_BASE}manifest.json`;
 const TOP_ROUTE_SVG_URL = `${PACKAGE_BASE}assets/svg/top_route_layer_1448x1086.svg`;
 const BOTTOM_PROGRESS_SVG_URL = `${PACKAGE_BASE}assets/svg/bottom_progress_layer_1448x1086.svg`;
-const SMOKE_URL = `${PACKAGE_BASE}assets/overlays/smoke_embers_overlay_transparent.png`;
-const BG_URL = `${PACKAGE_BASE}assets/background/map_background_clean_1448x1086.png`;
+const SMOKE_URL = `${PACKAGE_BASE}assets/overlays/smoke_embers_overlay_transparent.webp`;
+const BG_URL = `${PACKAGE_BASE}assets/background/map_background_clean_1448x1086.webp`;
 
 // two-leg one-way journey: USA -> Island/Grønland -> Norge. Progress 0..0.5
 // covers the first leg, 0.5..1 the second — this is the model the shipped
