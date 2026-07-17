@@ -94,6 +94,7 @@ const fragmentShader = /* glsl */ `
   uniform float uFresnelStr;  // overall reflection weight
   uniform float uSunStr;      // sun-glitter brightness
   uniform float uSunSharp;    // sun-glitter tightness (higher = smaller corridor)
+  uniform float uSparkStr;    // hot specular sparkle strength (reaches bloom)
   varying vec3 vWorldPos;
   varying float vWaveH;
   varying vec3 vNormal;
@@ -254,9 +255,24 @@ const fragmentShader = /* glsl */ `
     float glintMask = noise(vWorldPos.xz * 1.1 + uTime * 0.9);
     // gate 0.4-0.9: enough noise cells qualify as "bright" that the corridor
     // visibly twinkles (a tighter 0.55-0.95 attempt starved it into a static,
-    // lifeless patch on real phones)
-    float glint = sunLobe * F * (0.35 + 0.65 * smoothstep(0.4, 0.9, glintMask)) * uSunStr;
+    // lifeless patch on real phones). F softened to (0.3 + 0.7F) so the warm
+    // sheen stays visible at moderate view angles too, not only at grazing.
+    float glint = sunLobe * (0.30 + 0.70 * F) * (0.35 + 0.65 * smoothstep(0.4, 0.9, glintMask)) * uSunStr;
     col += mix(uWarmColor, vec3(1.0, 0.97, 0.9), 0.55) * glint;
+
+    // ---- hot sparkle: a tight Blinn-Phong lobe that actually EXCEEDS the
+    // bloom threshold (0.9) inside the sun corridor, so individual wave
+    // facets flash and bleed like real sun-on-water — the one ingredient the
+    // purely Fresnel-capped glint above can never provide (its max is ~0.5).
+    // Differs from the old plastic-era pow-300 carpet in three ways: the
+    // micro-normals feeding N are gentle and distance-faded (so facets are
+    // sparse, not thousands of identical pinpricks), the noise mask varies
+    // each facet's brightness, and the colour is warm — never pure white.
+    // Cost: one normalize + one pow, reusing the glintMask noise sample. ----
+    vec3 Hv = normalize(L + V);
+    float spark = pow(max(dot(N, Hv), 0.0), 170.0)
+                * (0.35 + 0.65 * smoothstep(0.45, 0.85, glintMask)) * uSparkStr;
+    col += vec3(1.0, 0.95, 0.84) * spark;
 
     // distance fog (reuses the dist computed in the micro-ripple block above)
     float fogF = smoothstep(uFogNear, uFogFar, dist);
@@ -313,10 +329,12 @@ export const WATER_PRESETS = {
   mobile: {
     detail: 0.85, normalStrA: 0.10, normalStrB: 0.065,
     fresnelPow: 5.0, fresnelStr: 0.70, sunStr: 0.85, sunSharp: 58.0,
+    sparkStr: 1.1,
   },
   desktop: {
     detail: 1.0, normalStrA: 0.11, normalStrB: 0.07,
     fresnelPow: 5.0, fresnelStr: 0.72, sunStr: 0.85, sunSharp: 60.0,
+    sparkStr: 1.25,
   },
 };
 
@@ -352,6 +370,7 @@ export function createWater({ sunDir, fogColor, fogNear, fogFar, mobile = false 
     uFresnelStr: { value: preset.fresnelStr },
     uSunStr: { value: preset.sunStr },
     uSunSharp: { value: preset.sunSharp },
+    uSparkStr: { value: preset.sparkStr },
   };
   _waveScaleUniform = uniforms.uWaveScale; // setWaveScale() drives GPU+CPU from here on
 
@@ -404,6 +423,8 @@ export function createWater({ sunDir, fogColor, fogNear, fogFar, mobile = false 
       set sunStr(v) { uniforms.uSunStr.value = v; },
       get sunSharp() { return uniforms.uSunSharp.value; },
       set sunSharp(v) { uniforms.uSunSharp.value = v; },
+      get sparkStr() { return uniforms.uSparkStr.value; },
+      set sparkStr(v) { uniforms.uSparkStr.value = v; },
     },
   };
 }
