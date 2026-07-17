@@ -864,15 +864,22 @@
     #comboBadge {
       position: absolute; bottom: 182px; left: 50%; transform: translateX(-50%) scale(0);
       font-family: "Norsebold", serif;
-      font-size: 20px; font-weight: 900; letter-spacing: 2px;
+      font-size: 22px; font-weight: 900; letter-spacing: 1px;
       color: #ff9d2e; text-shadow: 0 0 14px rgba(255,157,46,.8), 0 2px 6px rgba(0,0,0,.7);
-      transition: transform .18s cubic-bezier(.34,1.56,.64,1);
+      transition: transform .18s cubic-bezier(.34,1.56,.64,1), color .15s;
       pointer-events: none;
+      display: flex; flex-direction: column; align-items: center; gap: 2px;
+    }
+    #comboBadge .comboStreak { font-size: 26px; line-height: 1; }
+    #comboBadge .comboBonus {
+      font-size: 12px; letter-spacing: 2px; opacity: .92;
+      font-family: "Cinzel", "Avenir Next", system-ui, serif;
     }
     #comboBadge.show { transform: translateX(-50%) scale(1); }
-    #comboBadge.bump { animation: comboBump .25s ease-out; }
+    #comboBadge.bump { animation: comboBump .28s cubic-bezier(.34,1.56,.64,1); }
     @keyframes comboBump {
-      0% { transform: translateX(-50%) scale(1.5); }
+      0% { transform: translateX(-50%) scale(1.6); }
+      40% { transform: translateX(-50%) scale(.95); }
       100% { transform: translateX(-50%) scale(1); }
     }
 

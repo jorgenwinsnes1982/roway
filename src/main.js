@@ -1457,6 +1457,12 @@ const SPEED_FOR_MAX_CHARGE = 26; // matches the base (non-boost) speed cap — s
 const CHARGE_PERFECT_LO = 0.78, CHARGE_PERFECT_HI = 1.08; // release window (with grace past full)
 const CHARGE_GOOD_LO = 0.55;
 const CHARGE_OVER = 1.18;  // held too long → oars slip, auto-release
+// Perfect-stroke combo: linear speed bonus up to +25% at 10 perfect strokes in a row.
+const COMBO_MAX_STREAK = 10;
+const COMBO_MAX_MULT = 0.25;
+const COMBO_MULT_PER_STREAK = COMBO_MAX_MULT / COMBO_MAX_STREAK; // 0.025 per perfect stroke
+// Milestones where the combo feedb ack escalates (visual + audio).
+const COMBO_MILESTONES = [3, 5, 8, 10, 15, 20, 25];
 // Meter feel-fix: the blade fills 0..CHARGE_VIS_MAX (not 0..1) so the tip
 // keeps moving all the way to the end of the real perfect window instead of
 // freezing at charge=1 for the last ~0.22s of a max-length hold.
@@ -1822,6 +1828,28 @@ function drawPendulum(s, P = PEND) {
   ctx.textAlign = 'center';
   ctx.fillStyle = 'rgba(190,245,200,.95)';
   ctx.fillText(IS_TOUCH ? 'RELEASE HERE' : 'RELEASE SPACE', cP.x, cP.y - 36);
+
+  // 5b) clearly glowing perfect-zone band + boundary ticks over the arc
+  const zoneA0 = pendAngle(CHARGE_PERFECT_LO, P);
+  const zoneA1 = pendAngle(CHARGE_PERFECT_HI, P);
+  ctx.save();
+  ctx.shadowColor = 'rgba(120,255,160,.9)';
+  ctx.shadowBlur = 14 + pulse * 8;
+  ctx.lineCap = 'round';
+  ctx.lineWidth = 10;
+  ctx.strokeStyle = `rgba(120,255,160,${0.35 + pulse * 0.25})`;
+  arcPath(ctx, zoneA0, zoneA1, P); ctx.stroke();
+  ctx.lineWidth = 4;
+  ctx.strokeStyle = 'rgba(200,255,210,.85)';
+  for (const za of [zoneA0, 0, zoneA1]) {
+    const pz = pendPoint(za, P);
+    const nz = { x: Math.sin(za), y: Math.cos(za) }; // outward normal from circle centre
+    ctx.beginPath();
+    ctx.moveTo(pz.x - nz.x * 6, pz.y - nz.y * 6);
+    ctx.lineTo(pz.x + nz.x * 14, pz.y + nz.y * 14);
+    ctx.stroke();
+  }
+  ctx.restore();
 
   // 6) lightning while actively charging (energy fills from the start end)
   if (s.accumulating && !s.over) {
@@ -3791,7 +3819,15 @@ function setDigits(el, str, suffixHtml = '') {
 function updateComboBadge() {
   const el = $('comboBadge');
   if (G.combo >= 2) {
-    el.textContent = `🔥 x${G.combo}`;
+    const streak = Math.min(G.combo, COMBO_MAX_STREAK);
+    const bonusPct = Math.round(streak * COMBO_MULT_PER_STREAK * 100);
+    const hot = G.combo >= 10;
+    const warm = G.combo >= 5;
+    const color = hot ? '#ff4d4d' : warm ? '#ff9d2e' : '#ffd25e';
+    const glow = hot ? 'rgba(255,77,77,' : warm ? 'rgba(255,157,46,' : 'rgba(255,210,94,';
+    el.innerHTML = `<span class="comboStreak">🔥 x${G.combo}</span><span class="comboBonus">+${bonusPct}% SPEED</span>`;
+    el.style.color = color;
+    el.style.textShadow = `0 0 ${14 + Math.min(G.combo, 12)}px ${glow}0.85), 0 2px 6px rgba(0,0,0,.7)`;
     el.classList.add('show');
     el.classList.remove('bump');
     void el.offsetWidth;
@@ -4702,12 +4738,30 @@ function executeStroke(charge) {
   }
 
   const boostMult = G.boost > 0 ? 1.35 : 1;
-  const comboMult = 1 + Math.min(G.combo, 10) * 0.04; // up to +40% at 10-streak
+  const comboMult = 1 + Math.min(G.combo, COMBO_MAX_STREAK) * COMBO_MULT_PER_STREAK; // up to +25% at 10-streak
   G.speed += power * 3.8 * boostMult * comboMult;
   updateComboBadge();
   showFeedback(label, color);
   kick(0.35 + power * 0.25); // the stroke IS the beat
   oarSplash(power);
+
+  // ---- escalating combo milestone feedback ----
+  if (charge >= CHARGE_PERFECT_LO && charge <= CHARGE_PERFECT_HI + RELEASE_GRACE && COMBO_MILESTONES.includes(G.combo)) {
+    const intensity = Math.min(1, G.combo / COMBO_MAX_STREAK);
+    bloomPulse = Math.max(bloomPulse, 0.15 + intensity * 0.35);
+    shakeAmt = Math.max(shakeAmt, 0.08 + intensity * 0.28);
+    G.fovPunch = Math.max(G.fovPunch, 0.4 + intensity * 0.8);
+    if (G.combo >= 10) {
+      showFeedback(`🔥 COMBO x${G.combo} — MAX FLOW!`, '#ff4d4d', true);
+      crowd();
+    } else if (G.combo >= 5) {
+      showFeedback(`🔥 COMBO x${G.combo}`, '#ff9d2e', true);
+      hornSound(0.5 + intensity * 0.5);
+    } else {
+      showFeedback(`COMBO x${G.combo}!`, '#ffd25e', true);
+      ding(1.2 + intensity * 0.3);
+    }
+  }
 
   // catch splash at EVERY blade tip — eight oars biting the water at once
   for (const oar of shipData.oars) {
@@ -5232,6 +5286,16 @@ function update(dt, realDt = dt) {
       if (leadNow) {
         showFeedback('YOU\'RE LEADING! 🇳🇴', '#7dff9e', true);
         ding(1.5);
+        // Sweden reacts harder the hotter your combo streak is when you pass them.
+        if (G.combo >= 3) {
+          R.wobble = Math.min(1, 0.4 + G.combo * 0.08);
+          R.bomT = 1.2;
+          const call = G.combo >= 10 ? 'SWEDEN IS SHAKEN! 🙈'
+            : G.combo >= 5 ? 'SWEDEN CAN\'T MATCH THE PACE!'
+            : 'SWEDEN FALLS BACK!';
+          showFeedback(call, '#ff9d2e', true);
+          hornSound(0.6);
+        }
       } else {
         showFeedback('SWEDEN TAKES THE LEAD!', '#ff9d9d', true);
         ding(0.6);
