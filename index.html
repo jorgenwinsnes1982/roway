@@ -737,7 +737,7 @@
       box-shadow: 0 12px 40px rgba(0,0,0,.6);
       max-width: min(420px, 88vw);
     }
-    .confirmTitle { font-family: "Norsebold", serif; font-size: 26px; font-weight: 900; letter-spacing: 1px; margin-bottom: 8px; }
+    .confirmTitle { font-family: "Norsebold", serif; font-size: 39px; font-weight: 900; letter-spacing: 1px; margin-bottom: 8px; }
     .confirmText { font-size: 14px; opacity: .85; line-height: 1.6; margin-bottom: 18px; }
 
     /* Mobile: keep all three utility buttons at the TOP (smaller), and push
@@ -1177,14 +1177,14 @@
     /* Result redesign: the match result is a small SECONDARY context bar now
        (placement is the hero — see #placeBanner below) — fully resets the
        big gradient .title treatment down to one muted line. */
+    /* plain text, no chip: the outline/background pills read as UI noise —
+       the text alone does the job (same de-chroming as #stageNameBanner,
+       #resultTicker and #newBestBadge below) */
     #resultTitle.resultTitleSmall {
       font-size: clamp(13px, 2vw, 17px); font-weight: 700; letter-spacing: 2px;
       background: none; -webkit-background-clip: initial; background-clip: initial;
       color: rgba(255,255,255,.78); filter: none; text-shadow: 0 2px 6px rgba(0,0,0,.5);
       margin-top: 2px; display: inline-block;
-      padding: 7px 20px; border-radius: 999px;
-      border: 1px solid rgba(255,255,255,.22);
-      background-color: rgba(0,0,0,.28);
     }
     /* Race hides this chip entirely — needs to out-specificity the
        ID+class rule above (.hiddenMsg alone loses to #resultTitle.resultTitleSmall) */
@@ -1195,8 +1195,8 @@
     #resultTicker {
       font-size: 15px; font-weight: 700; letter-spacing: .4px;
       color: rgba(255,255,255,.9); min-height: 1.3em;
-      display: inline-block; padding: 8px 22px; border-radius: 999px;
-      border: 1px solid rgba(255,255,255,.2); background: rgba(0,0,0,.26);
+      display: inline-block; padding: 4px 0;
+      text-shadow: 0 2px 6px rgba(0,0,0,.5);
     }
     #resultTicker:empty { display: none; }
     #resultTicker.tickerIn { animation: tickerFade .45s ease-out; }
@@ -1276,8 +1276,6 @@
       display: inline-flex; align-items: center; gap: 10px;
       font-size: 13px; font-weight: 800; letter-spacing: .6px; text-transform: uppercase;
       color: #ffd25e; text-shadow: 0 0 10px rgba(255,210,94,.4);
-      padding: 6px 16px; border-radius: 999px;
-      border: 1px solid rgba(255,211,106,.55); background: rgba(0,0,0,.28);
       margin: 0 0 10px;
     }
     #newBestBadge.hiddenMsg { display: none; }
@@ -1289,8 +1287,6 @@
       display: inline-block;
       font-size: clamp(13px, 2vw, 17px); font-weight: 700; letter-spacing: 2px;
       text-transform: uppercase; color: #8fd0ff; text-shadow: 0 0 10px rgba(120,190,255,.4);
-      padding: 7px 20px; border-radius: 999px;
-      border: 1px solid rgba(143,208,255,.35); background-color: rgba(0,0,0,.28);
     }
     #stageNameBanner.hiddenMsg { display: none; }
     /* Fase 3e: which voyage stage this run was played on — a small secondary
@@ -2329,7 +2325,7 @@
       /* halve the card → "You made the leaderboard!" distance: the (often
          invisible) ticker pill between them is the bulk of it — slim it and
          pull both neighbours in. ~62px → ~36px with the pill showing. */
-      #resultTicker { padding: 4px 16px; font-size: 13px; margin: -6px 0; }
+      #resultTicker { font-size: 13px; margin: -6px 0; }
       /* keep SOME card → headline separation on mobile (desktop gets 16px) */
       #lbNameHeadline { margin-top: 8px; }
     }
