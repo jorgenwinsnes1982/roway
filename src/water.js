@@ -173,17 +173,21 @@ const fragmentShader = /* glsl */ `
     vec3 V = normalize(cameraPosition - vWorldPos);
     vec3 L = normalize(uSunDir);
 
-    // micro-ripples: TWO decorrelated normal layers, much weaker than before
-    // and at larger scales (period ~1.1m / ~2.4m, not the old ~0.4m), so the
-    // surface reads as soft crinkle rather than embossed plastic. Faded at
-    // BOTH ends of the view: gone right at the camera (no high-frequency
-    // hammering underfoot) and gone toward the horizon (glassy, no moiré).
+    // micro-ripples: TWO decorrelated normal layers, weak and at large scales
+    // (period ~1.6m / ~3.7m — coarser than the original ~0.4m single layer),
+    // so the surface reads as soft crinkle rather than embossed/tiled plastic.
+    // Faded at BOTH ends of the view: gone right at the camera (no
+    // high-frequency hammering underfoot) and faded out earlier toward the
+    // horizon (100-240m, was 150-380m) so distant water settles calm instead
+    // of flickering at the fog line.
     float dist = distance(cameraPosition, vWorldPos);
-    float detail = smoothstep(6.0, 28.0, dist) * (1.0 - smoothstep(150.0, 380.0, dist)) * uDetail;
-    // layer A: fine, drifting one way
-    vec2 pa = vWorldPos.xz * 0.9 + vec2(uTime * 0.35, uTime * 0.10);
-    // layer B: coarser, drifting the other way (breaks the single-pattern look)
-    vec2 pb = vWorldPos.xz * 0.42 + vec2(-uTime * 0.13, uTime * 0.27);
+    float detail = smoothstep(8.0, 30.0, dist) * (1.0 - smoothstep(100.0, 240.0, dist)) * uDetail;
+    // layer A: fine, drifting one way — lower frequency than before so the
+    // repeat period reads larger/less obviously tiled across the plane
+    vec2 pa = vWorldPos.xz * 0.62 + vec2(uTime * 0.35, uTime * 0.10);
+    // layer B: coarser still, drifting the other way (breaks the single-
+    // pattern look — different scale, direction AND speed from layer A)
+    vec2 pb = vWorldPos.xz * 0.27 + vec2(-uTime * 0.13, uTime * 0.27);
     float me = 0.35;
     vec2 ga = vec2(noise(pa + vec2(me, 0.0)) - noise(pa - vec2(me, 0.0)),
                    noise(pa + vec2(0.0, me)) - noise(pa - vec2(0.0, me)));
@@ -212,8 +216,12 @@ const fragmentShader = /* glsl */ `
 
     // ---- Schlick fresnel: reflection grows toward grazing angles, and is
     // capped so a large flat area never turns into one white mirror sheet ----
+    // (ceiling lowered 0.55 -> 0.5 — see report: "reduce environment
+    // reflection" — this shader has no envMap, so the Fresnel-weighted sky/
+    // horizon mix IS the reflection term; capping it lower is the equivalent
+    // of reducing envMapIntensity on a PBR material.)
     float F = uFresnelStr * (0.02 + 0.98 * pow(1.0 - cosV, uFresnelPow));
-    F = clamp(F, 0.0, 0.55);
+    F = clamp(F, 0.0, 0.5);
     vec3 R = reflect(-V, N);
     float ry = clamp(R.y, 0.0, 1.0);
     // tight lobe where the reflected ray points AT the sun — reused below by
@@ -242,7 +250,9 @@ const fragmentShader = /* glsl */ `
     // the whole sea. Drifting noise makes the corridor twinkle instead of
     // reading as a solid bar; warm-white keeps colour (never pure #fff). ----
     float glintMask = noise(vWorldPos.xz * 1.1 + uTime * 0.9);
-    float glint = sunLobe * F * (0.35 + 0.65 * smoothstep(0.4, 0.9, glintMask)) * uSunStr;
+    // narrower gate (0.4-0.9 -> 0.55-0.95): fewer noise cells qualify as
+    // "bright", so fewer/smaller sparkle points instead of a broad shimmer
+    float glint = sunLobe * F * (0.35 + 0.65 * smoothstep(0.55, 0.95, glintMask)) * uSunStr;
     col += mix(uWarmColor, vec3(1.0, 0.97, 0.9), 0.55) * glint;
 
     // distance fog (reuses the dist computed in the micro-ripple block above)
@@ -278,9 +288,33 @@ const _SPACING_L = 3400 / 420;
 const WATER_SEG_W = Math.round(WATER_W / _SPACING_W); // = 190 (unchanged)
 const WATER_SEG_L = Math.round(WATER_L / _SPACING_L); // = 247
 
+// ---- MOBILE / DESKTOP look presets ----
+// This is a hand-written, non-PBR ShaderMaterial — there is no metalness or
+// roughness property to set (it has never had a metallic term; that's a
+// fixed 0-equivalent by construction, not a value to toggle). The nearest
+// real controls are: normalStrA/B (micro-detail strength), fresnelStr (the
+// Fresnel-weighted sky/horizon mix — this shader's only "reflection", since
+// there is no envMap to turn down), and sunStr/sunSharp (the sun-glint
+// highlight's brightness/width — narrower+brighter reads glossier, wider+
+// dimmer reads rougher). Both presets keep the SAME Fresnel shape
+// (fresnelPow) — grazing angles reflect more than looking straight down in
+// both — desktop just runs a bit brighter/crisper throughout. Overridable
+// afterward via water.params.* either way (unchanged API).
+export const WATER_PRESETS = {
+  mobile: {
+    detail: 0.55, normalStrA: 0.05, normalStrB: 0.03,
+    fresnelPow: 5.5, fresnelStr: 0.48, sunStr: 0.42, sunSharp: 42.0,
+  },
+  desktop: {
+    detail: 0.85, normalStrA: 0.075, normalStrB: 0.045,
+    fresnelPow: 5.5, fresnelStr: 0.58, sunStr: 0.52, sunSharp: 48.0,
+  },
+};
+
 export function createWater({ sunDir, fogColor, fogNear, fogFar, mobile = false }) {
   const geo = new THREE.PlaneGeometry(WATER_W, WATER_L, WATER_SEG_W, WATER_SEG_L);
   geo.rotateX(-Math.PI / 2);
+  const preset = mobile ? WATER_PRESETS.mobile : WATER_PRESETS.desktop;
 
   const uniforms = {
     uTime: { value: 0 },
@@ -299,17 +333,16 @@ export function createWater({ sunDir, fogColor, fogNear, fogFar, mobile = false 
     // until the first setShips() so no phantom wash renders at the origin
     uShipA: { value: new THREE.Vector4(1e6, 1e6, 0, 0) },
     uShipB: { value: new THREE.Vector4(1e6, 1e6, 0, 0) },
-    // ---- water-look tunables (see fragment shader). Mobile drops the global
-    // micro-detail weight a notch so the horizon stays clean on lower-density
-    // buffers; every other value is identical across devices. All exposed via
+    // ---- water-look tunables (see fragment shader + WATER_PRESETS above).
+    // Every value now differs by device, not just detail. All exposed via
     // the returned `params` API for live tuning from the dev console. ----
-    uDetail: { value: mobile ? 0.75 : 1.0 },
-    uNormalStrA: { value: 0.11 },
-    uNormalStrB: { value: 0.07 },
-    uFresnelPow: { value: 5.0 },
-    uFresnelStr: { value: 0.72 },
-    uSunStr: { value: 0.85 },
-    uSunSharp: { value: 60.0 },
+    uDetail: { value: preset.detail },
+    uNormalStrA: { value: preset.normalStrA },
+    uNormalStrB: { value: preset.normalStrB },
+    uFresnelPow: { value: preset.fresnelPow },
+    uFresnelStr: { value: preset.fresnelStr },
+    uSunStr: { value: preset.sunStr },
+    uSunSharp: { value: preset.sunSharp },
   };
   _waveScaleUniform = uniforms.uWaveScale; // setWaveScale() drives GPU+CPU from here on
 

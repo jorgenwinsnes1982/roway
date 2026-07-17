@@ -4,7 +4,7 @@ import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
 import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
 import { ShaderPass } from 'three/addons/postprocessing/ShaderPass.js';
 import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
-import { createWater, sampleWater, setWaveScale } from './water.js';
+import { createWater, sampleWater, setWaveScale, WATER_PRESETS } from './water.js';
 import { buildShip, poseStroke, cyclePose } from './ship.js';
 import { createSky, createFjord, createClouds, createCourse, disposeCourse, updateCourse, createSeagulls, createFogBanks, createIntroLandmarks, COURSE_LENGTH, CHANNEL_HALF } from './world.js';
 import { initAudio, oarSplash, ding, thud, whistle, crowd, kick, hat, bass, whoosh, donk, roVoice, fireworkBoom, setSfxMuted, isSfxMuted, setMusicMuted, isMusicMuted, setMusicDucked, setSeagullScene, hoverSparkle, hornSound, isMusicLoadSettled, resumeAudio } from './audio.js';
@@ -413,7 +413,11 @@ function applyQuality(level) {
   const low = level === 'low';
   bloomPass.enabled = !low;
   finishPass.enabled = !low;
-  water.params.detail = low ? 0.4 : (IS_MOBILE_GPU ? 0.75 : 1.0);
+  // baseline is whichever WATER_PRESETS entry createWater() already picked
+  // (see water.js) — LOW shaves further off that same baseline instead of
+  // hardcoding its own separate number that could drift out of sync with it.
+  const basePreset = IS_MOBILE_GPU ? WATER_PRESETS.mobile : WATER_PRESETS.desktop;
+  water.params.detail = low ? basePreset.detail * 0.55 : basePreset.detail;
   glDiagNote(`quality -> ${level}`);
 }
 applyQuality(quality);
