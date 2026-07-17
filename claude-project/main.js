@@ -3580,6 +3580,21 @@ function fmtTime(t) {
   return `${m}:${s.toFixed(1).padStart(4, '0')}`;
 }
 
+// Live HUD counters in Norsebold: the font's digits are PROPORTIONAL (no
+// tabular-figures feature), so plain textContent would jitter sideways as
+// values tick. Render every 0-9 into an equal-width .digit slot instead
+// (see .pill .value .digit in index.html) — glyphs change inside their slot,
+// nothing else moves. Skips the DOM write entirely when the value (and
+// static suffix, e.g. the km/h unit) hasn't changed since last frame.
+function setDigits(el, str, suffixHtml = '') {
+  const key = str + suffixHtml;
+  if (el.__digits === key) return;
+  el.__digits = key;
+  let html = '';
+  for (const ch of str) html += (ch >= '0' && ch <= '9') ? `<span class="digit">${ch}</span>` : ch;
+  el.innerHTML = html + suffixHtml;
+}
+
 function updateComboBadge() {
   const el = $('comboBadge');
   if (G.combo >= 2) {
@@ -3776,9 +3791,9 @@ function startRace(quick) {
   hud.confirmScreen.classList.add('hidden');
   hud.restartBtn.style.display = 'flex';
   // reset HUD readouts immediately (they only tick during racing)
-  hud.time.textContent = fmtTime(0);
-  hud.speed.innerHTML = `0 <small>km/h</small>`;
-  hud.balls.textContent = '0';
+  setDigits(hud.time, fmtTime(0));
+  setDigits(hud.speed, '0', ' <small>km/h</small>');
+  setDigits(hud.balls, '0');
   // Stage 5 ("THE VOYAGE HOME"): a short cinematic pan around the ship shows
   // off the trophy on deck before the real countdown starts, instead of the
   // usual hard camera snap — see TROPHY_PAN/runTrophyPanCamera above. Every
@@ -5018,9 +5033,9 @@ function update(dt, realDt = dt) {
     if (G.z <= course.finishZ) finishRace();
 
     // HUD
-    hud.time.textContent = fmtTime(G.time);
-    hud.speed.innerHTML = `${Math.round(G.speed * 3.6 / 1.4)} <small>km/h</small>`;
-    hud.balls.textContent = String(G.balls);
+    setDigits(hud.time, fmtTime(G.time));
+    setDigits(hud.speed, String(Math.round(G.speed * 3.6 / 1.4)), ' <small>km/h</small>');
+    setDigits(hud.balls, String(G.balls));
     hud.vignette.style.opacity = Math.min(1, G.speed / 24 + (G.boost > 0 ? 0.35 : 0));
     hud.boostGlow.style.opacity = G.boost > 0 ? Math.min(1, G.boost / 1.2) : 0;
   }
