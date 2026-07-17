@@ -116,6 +116,13 @@ const DEV_FLAG_KEY = 'roway.devtools';
 }
 const DEV_TOOLS = import.meta.env.DEV || localStorage.getItem(DEV_FLAG_KEY) === '1';
 
+// ---- Google Analytics 4 event helper ----
+// gtag is loaded from index.html; this helper is a no-op if it fails to load
+// or if the user blocks the script.
+function track(eventName, params = {}) {
+  if (typeof gtag === 'function') gtag('event', eventName, params);
+}
+
 // Kick off audio asset loading (fetch + decode, incl. the ~3MB theme song)
 // immediately at boot instead of waiting for the player's first gesture —
 // decoding doesn't need a user gesture, only playback (ctx.resume(), still
@@ -2189,6 +2196,7 @@ let howtoCameFromMenu = false; // ✕ must restore the start screen it hid (Back
 let howtoModalOffT = 0; // pending "strip .howtoModal" timer — see howtoCloseBtn below
 function openControlsHelp() {
   clearTimeout(howtoModalOffT); // reopening before a previous close's delayed cleanup fired
+  track('open_screen', { screen: 'how_to_play' });
   const midRace = G.mode === 'racing' || G.mode === 'countdown';
   if (midRace) {
     G.paused = true;
@@ -2260,6 +2268,7 @@ function openLeaderboardFrom(screenId, mode = 'time') {
   hud.lbScreen.classList.remove('hidden');
   selectLbTab(DAILY_KEY); // keep the Today/All-time sub-tab primed regardless of which top-level mode opens
   selectLbMode(mode);
+  track('open_screen', { screen: 'leaderboard', mode });
 }
 $('lbBtn').addEventListener('click', (e) => {
   e.currentTarget.blur(); // Regel 2: a focused button turns Space into a click
@@ -2409,6 +2418,7 @@ let voyageReturnScreen = hud.startScreen;
 // the interactive overview map (src/map/voyageMap.js) and only get "Tilbake".
 function openVoyageScreen(fromScreen, forRaceStart = false) {
   voyageReturnScreen = fromScreen;
+  track('open_screen', { screen: forRaceStart ? 'voyage_stage' : 'voyage_map' });
   // startNewVoyageBtn calls this with fromScreen === hud.voyageScreen itself
   // (resetting in place, no reload) — don't hide the screen we're already on.
   if (fromScreen !== hud.voyageScreen) fromScreen.classList.add('hidden');
@@ -3637,6 +3647,7 @@ const resetVoyageRow = $('resetVoyageRow');
 toggleHideGhost.classList.toggle('on', hideGhostPref);
 settingsBtn.addEventListener('click', () => {
   settingsBtn.blur();
+  track('open_screen', { screen: 'settings' });
   if (G.mode === 'racing' || G.mode === 'countdown') { G.paused = true; releaseStroke(); }
   hideGhostRow.style.display = hasGhostAvailable() ? 'flex' : 'none';
   resetVoyageRow.style.display = isStageFinal(5) ? 'flex' : 'none';
@@ -3652,6 +3663,7 @@ settingsClose.addEventListener('click', (e) => { e.currentTarget.blur(); closeSe
 // presentation as Settings (z-50 plate over whatever is showing) ----
 $('aboutBtn').addEventListener('click', (e) => {
   e.currentTarget.blur();
+  track('open_screen', { screen: 'roway_story' });
   $('aboutScreen').classList.remove('hidden');
   updateAboutScrollFade(); // re-measure now that the (visibility:hidden-but-laid-out) body is actually visible
 });
@@ -3866,6 +3878,7 @@ function startRace(quick) {
   stopVoyageDust(); // never let the Voyage Complete dust loop survive into a new/reset race
   // Fase 3c: build the right course BEFORE the per-race resets below touch it
   const raceStage = ensureCourseForMode();
+  track('race_start', { mode: G.gameMode, stage_id: raceStage ? raceStage.id : null });
   if (raceStage) {
     // Norwegian chapter card ("ETAPPE N AV 5 / NAVN") — the mood crossfade
     // from ensureCourseForMode() lands underneath it, and a whoosh + crowd
@@ -4114,6 +4127,13 @@ function finishRace() {
     time: G.time, rawTime, missedGates,
     balls: G.balls, perfect: G.perfect, gates: gatesPassed, win: beatSweden,
   };
+  track('race_finish', {
+    mode: G.gameMode,
+    time_seconds: +G.time.toFixed(2),
+    won: beatSweden ? 1 : 0,
+    record: isRecord ? 1 : 0,
+    stage_id: G.stageAtRunStart || null,
+  });
   G.lastRunSaved = false;
   G.resultStage = 1;
   const sc = computeScore(G.lastRun);
@@ -4326,6 +4346,7 @@ function finishRace() {
       const firstCompletion = !isStageFinal(FINAL_STAGE_ID);
       if (firstCompletion) {
         markStageFinal(FINAL_STAGE_ID);
+        track('story_complete', { time_seconds: +G.time.toFixed(2), score: sc.total });
         recordStageBest(FINAL_STAGE_ID, Math.round(G.time * 1000), sc.total); // the ONE final time, pending submit
         // C4: ask for a name before the one-shot submission — same alias
         // field/save button as KAPPRO (saveScore routes to saveVoyageFinal).
