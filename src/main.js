@@ -1480,7 +1480,7 @@ const METER_DRAIN_S = 0.12; // ...then lerps to empty over this long
 const BEST_KEY = 'vikingferd_best';
 // Portstraff: missed gates cost time in KAPPRO — REISEN never applies this
 // (see finishRace() and the gate-check loop below). MUST stay identical to
-// GATE_MISS_PENALTY_S in netlify/functions/submit-score.js.
+// GATE_MISS_PENALTY_S in src/api/submit-score.js.
 // KAPPRO gates are now hard checkpoints (see the gate-check loop): a miss
 // rewinds the boat instead of letting the player sail past, so by the finish
 // every kapp gate ends up g.passed=true and missedGates is always 0 — this
@@ -2564,7 +2564,7 @@ async function renderVoyageDoneStatus() {
   // correct for solo/offline play) rather than leaving a permanent dash.
   let placeText = ordinal(1);
   try {
-    const res = await fetchT('/.netlify/functions/get-voyage', { cache: 'no-store' });
+    const res = await fetchT('/api/voyage', { cache: 'no-store' });
     if (!res.ok) throw new Error('offline');
     const j = await res.json();
     const list = Array.isArray(j.scores) ? j.scores : [];
@@ -2812,7 +2812,7 @@ hud.aliasInput.addEventListener('input', syncSaveButtonValidity);
 
 // Score formula — built from the run parameters shown in the HUD:
 //   time (faster = more), footballs, perfect strokes, gates, derby win
-// MUST stay identical to computeScore() in netlify/functions/submit-score.js
+// MUST stay identical to computeScore() in src/api/submit-score.js
 function computeScore(run) {
   const timePts = Math.round(250000 / Math.max(30, run.time));
   const ballPts = run.balls * 200;
@@ -2841,7 +2841,7 @@ function saveLocal(entry) {
   localStorage.setItem(LB_KEY, JSON.stringify(list.slice(0, 10)));
 }
 
-// MUST stay identical to canonicalMsg() in netlify/functions/submit-score.js
+// MUST stay identical to canonicalMsg() in src/api/submit-score.js
 function canonicalMsg(d) {
   return [
     String(d.name ?? ''),
@@ -2878,7 +2878,7 @@ function fetchT(url, opts = {}, timeoutMs = 10_000) {
 // nonce; caches on success, null on any failure.
 async function fetchGlobal(day = null) {
   try {
-    const url = '/.netlify/functions/get-scores' + (day ? `?day=${encodeURIComponent(day)}` : '');
+    const url = '/api/scores' + (day ? `?day=${encodeURIComponent(day)}` : '');
     const res = await fetchT(url, { cache: 'no-store' });
     if (!res.ok) return null;
     const j = await res.json();
@@ -3004,7 +3004,7 @@ let voyageId = getOrCreateVoyageId();
 
 async function issueStageToken(stage, timeMs) {
   try {
-    const res = await fetchT('/.netlify/functions/issue-stage-token', {
+    const res = await fetchT('/api/voyage/token', {
       method: 'POST', headers: { 'content-type': 'application/json' },
       body: JSON.stringify({ voyageId, stage, timeMs }),
     });
@@ -3016,7 +3016,7 @@ async function issueStageToken(stage, timeMs) {
 async function submitVoyageTokens(tokens) {
   try {
     const alias = localStorage.getItem(ALIAS_KEY) || 'Unknown viking';
-    const res = await fetchT('/.netlify/functions/submit-voyage', {
+    const res = await fetchT('/api/voyage/submit', {
       method: 'POST', headers: { 'content-type': 'application/json' },
       body: JSON.stringify({ alias, voyageId, tokens }),
     });
@@ -3080,7 +3080,7 @@ async function renderStoryModeLeaderboard() {
     entry: { id: myId, alias: localStorage.getItem(ALIAS_KEY) || 'You', totalMs: localTotalMs },
   }, $('lbStoryList'));
   try {
-    const res = await fetchT('/.netlify/functions/get-voyage', { cache: 'no-store' });
+    const res = await fetchT('/api/voyage', { cache: 'no-store' });
     if (!res.ok) throw new Error('offline');
     const j = await res.json();
     const list = Array.isArray(j.scores) ? j.scores : [];
@@ -3245,7 +3245,7 @@ async function renderVoyageRankBanner(freshResult = null) {
     hud.voyageRankBanner.textContent = "🏆 Rank appears once you're back online";
   };
   try {
-    const res = await fetchT('/.netlify/functions/get-voyage', { cache: 'no-store' });
+    const res = await fetchT('/api/voyage', { cache: 'no-store' });
     if (!res.ok) { offlineBanner(); return; }
     const j = await res.json();
     // per-stage/"so far" placements apply after EVERY voyage run — the
@@ -3342,7 +3342,7 @@ async function saveScore({ silent = false } = {}) {
       if (!currentNonce) await fetchGlobal();
       if (currentNonce) {
         const sig = await signRun(run);
-        const res = await fetchT('/.netlify/functions/submit-score', {
+        const res = await fetchT('/api/scores', {
           method: 'POST',
           headers: { 'content-type': 'application/json' },
           body: JSON.stringify({ ...run, day: DAILY_KEY, nonce: currentNonce, sig }),
@@ -3434,7 +3434,7 @@ async function shareChallenge(msgEl, btnEl) {
   let url;
   try {
     const alias = String(hud.aliasInput.value || localStorage.getItem(ALIAS_KEY) || 'Unknown viking').trim().slice(0, 14);
-    const res = await fetchT('/.netlify/functions/create-challenge', {
+    const res = await fetchT('/api/challenge', {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({
@@ -3588,7 +3588,7 @@ function initChallengeFromURL() {
   document.getElementById('cinebars').classList.remove('on');
   document.getElementById('controlsBtn').style.display = ''; // hidden during the intro — see index.html
 
-  fetchT(`/.netlify/functions/get-challenge?id=${encodeURIComponent(id)}`)
+  fetchT(`/api/challenge?id=${encodeURIComponent(id)}`)
     .then((res) => { if (!res.ok) throw new Error('not-found'); return res.json(); })
     .then((entry) => {
       if (!entry || !Array.isArray(entry.track) || entry.track.length < 2) throw new Error('bad-data');

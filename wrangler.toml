@@ -1,0 +1,38 @@
+# Cloudflare Workers configuration for ROWAY
+# Static assets are served from the Vite build output.
+# API routes are handled by src/worker.js.
+
+name = "roway"
+main = "src/worker.js"
+compatibility_date = "2026-07-17"
+
+[assets]
+directory = "dist"
+binding = "ASSETS"
+
+# KV namespaces used by the API routes.
+# Replace <...> with real IDs after creating them with:
+#   npx wrangler kv namespace create "roway-leaderboard"
+#   npx wrangler kv namespace create "roway-nonces"
+#   npx wrangler kv namespace create "roway-rate"
+#   npx wrangler kv namespace create "roway-challenges"
+#   npx wrangler kv namespace create "roway-voyage-scores"
+[[kv_namespaces]]
+binding = "leaderboard"
+id = "<LEADERBOARD_KV_ID>"
+
+[[kv_namespaces]]
+binding = "nonces"
+id = "<NONCES_KV_ID>"
+
+[[kv_namespaces]]
+binding = "rate"
+id = "<RATE_KV_ID>"
+
+[[kv_namespaces]]
+binding = "challenges"
+id = "<CHALLENGES_KV_ID>"
+
+[[kv_namespaces]]
+binding = "voyageScores"
+id = "<VOYAGE_SCORES_KV_ID>"
