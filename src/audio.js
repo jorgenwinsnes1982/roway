@@ -1,5 +1,5 @@
 // Procedural WebAudio: splashes, dings, thuds, crowd — no asset files.
-// Deliberate exception: public/sounds/drum.mp3 (Haaland's war drum, real
+// Deliberate exception: public/sounds/compressed_audio/drum.webm (Haaland's war drum, real
 // recording) — see donk() below. Everything else here stays synthesised.
 let ctx = null;
 let master = null;      // SFX bus — all synthesised sounds + samples route here
@@ -13,7 +13,7 @@ const SFX_VOL = 0.5;    // SFX bus level when unmuted
 const FADE_SEC = 2;     // toggles glide over 2s instead of cutting instantly
 let musicBuffer = null, musicLoadStarted = false, musicSource = null;
 let musicLoadFailed = false; // fetch/decode error — see isMusicLoadSettled()
-// looping seagull ambience (public/sounds/sea_seagull.mp3) — audible on the
+// looping seagull ambience (public/sounds/compressed_audio/sea_seagull.webm) — audible on the
 // menu/pre-race screens and (quieter) the result screens, silent through
 // countdown+racing. Own gain node so its level is independent of both the
 // SFX one-shots (still routes through `master`, so the Sound-effects toggle
@@ -36,14 +36,14 @@ let roSource = null;   // the currently-playing RO so a new shout can cut off th
 // hoverSparkle() below). Slots fill in as each file decodes (independently,
 // so a slow/failed one doesn't hold the others back); hoverSparkle() only
 // ever picks among the slots that are actually loaded.
-const HOVER_FILES = ['/sounds/hover1.mp3', '/sounds/hover2.mp3', '/sounds/hover3.mp3'];
+const HOVER_FILES = ['/sounds/compressed_audio/hover1.webm', '/sounds/compressed_audio/hover2.webm', '/sounds/compressed_audio/hover3.webm'];
 let hoverBuffers = [null, null, null];
 let hoverLoadStarted = false;
 let lastHoverIdx = -1, lastHoverAt = -Infinity;
 const HOVER_REPEAT_GUARD_MS = 3000;
 const RO_SKIP = 0.05;  // seconds skipped at the head of the RO recording (dead air before the shout); higher = shout fires earlier
-let splashBuffer = null, splashLoadStarted = false; // real oar-splash sample (public/sounds/ro_splash.mp3) — decode once
-let hornBuffer = null, hornLoadStarted = false; // distant ship's horn (public/sounds/horn.mp3) — decode once
+let splashBuffer = null, splashLoadStarted = false; // real oar-splash sample (public/sounds/compressed_audio/ro_splash.webm) — decode once
+let hornBuffer = null, hornLoadStarted = false; // distant ship's horn (public/sounds/compressed_audio/horn.webm) — decode once
 
 function ensureCtx() {
   if (!ctx) {
@@ -242,7 +242,7 @@ export function initAudio() {
   // the same guard, no separate error state to track.
   if (!drumLoadStarted) {
     drumLoadStarted = true;
-    fetch('/sounds/drum.mp3')
+    fetch('/sounds/compressed_audio/drum.webm')
       .then((r) => r.arrayBuffer())
       .then((buf) => ctx.decodeAudioData(buf))
       .then((decoded) => { drumBuffer = decoded; })
@@ -261,7 +261,7 @@ export function initAudio() {
   // oar-splash sample — decode once; oarSplash() is silent while null
   if (!splashLoadStarted) {
     splashLoadStarted = true;
-    fetch('/sounds/ro_splash.mp3')
+    fetch('/sounds/compressed_audio/ro_splash.webm')
       .then((r) => r.arrayBuffer())
       .then((buf) => ctx.decodeAudioData(buf))
       .then((decoded) => { splashBuffer = decoded; })
@@ -270,7 +270,7 @@ export function initAudio() {
   // distant ship's horn — decode once; hornSound() is silent while null
   if (!hornLoadStarted) {
     hornLoadStarted = true;
-    fetch('/sounds/horn.mp3')
+    fetch('/sounds/compressed_audio/horn.webm')
       .then((r) => r.arrayBuffer())
       .then((buf) => ctx.decodeAudioData(buf))
       .then((decoded) => { hornBuffer = decoded; })
@@ -298,7 +298,7 @@ export function initAudio() {
   // vocal enters — independent of, and multiplied with, the mute/duck gain.
   if (!musicLoadStarted) {
     musicLoadStarted = true;
-    fetch('/sounds/roway-theme.mp3')
+    fetch('/sounds/compressed_audio/roway-theme.webm')
       .then((r) => r.arrayBuffer())
       .then((buf) => ctx.decodeAudioData(buf))
       .then((decoded) => {
@@ -312,7 +312,7 @@ export function initAudio() {
   // riding seagullGain, never the source's own play/pause state.
   if (!seagullLoadStarted) {
     seagullLoadStarted = true;
-    fetch('/sounds/sea_seagull.mp3')
+    fetch('/sounds/compressed_audio/sea_seagull.webm')
       .then((r) => r.arrayBuffer())
       .then((buf) => ctx.decodeAudioData(buf))
       .then((decoded) => {
@@ -343,7 +343,7 @@ export function initAudio() {
   ambience = { src, g };
 }
 
-// oar blade hitting the water — a real recording (ro_splash.mp3), played
+// oar blade hitting the water — a real recording (ro_splash.webm), played
 // low so it reads as a soft accent rather than a foley hit. Replaces the old
 // procedural bandpass-filtered-noise splash(), which read as a "mechanical"
 // tick rather than water (most noticeable during the intro's rapid bot
@@ -361,7 +361,7 @@ export function oarSplash(vol = 1) {
   src.start();
 }
 
-// distant ship's horn (public/sounds/horn.mp3) — a rare splash-screen flavour
+// distant ship's horn (public/sounds/compressed_audio/horn.webm) — a rare splash-screen flavour
 // sound (see scheduleSplashHorn() in main.js) and the "cast off" signal right
 // as a race's countdown begins (startRace()). Unlike oarSplash's deliberately
 // buried level, a horn is meant to be NOTICED, so it plays close to full SFX
@@ -467,7 +467,7 @@ export function thud() {
   src.start();
 }
 
-// Haaland's war drum: deep "donk" — plays the real drum.mp3 sample once
+// Haaland's war drum: deep "donk" — plays the real drum.webm sample once
 // decoded (see initAudio()), falls back to the procedural donkSynth() hit
 // for as long as it isn't (still loading, or failed to load/decode —
 // offline, missing file). The gain parameter and call signature are
